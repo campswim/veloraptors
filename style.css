@@ -1,0 +1,12 @@
+/*
+Theme Name:   Magzine Child
+Theme URI:    https://veloraptors.com
+Description:  A child theme for the Magzine theme.
+Author:       Nathan Cox
+Author URI:   https://campswim.co
+Template:     magzine
+Version:      1.0.0
+*/
+
+/* Import the parent theme's styles */
+@import url("../magzine/style.css");
