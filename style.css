@@ -10,3 +10,25 @@ Version:      1.0.0
 
 /* Import the parent theme's styles */
 @import url("../magzine/style.css");
+
+#vr-homepage-banner {
+  background-position: center -50rem;
+}
+
+.current-menu-item > a {
+  border-color: var(--e-global-color-b3c880b) !important;
+}
+
+#vr-logo-container {
+  padding: 0 1rem;
+}
+
+@media all and (max-width: 1023px) and (orientation: landscape) {
+  #vr-home-members-banner {
+    padding: 5rem 1rem;
+  }
+
+  #vr-logo {
+    width: 40%;
+  }
+}
