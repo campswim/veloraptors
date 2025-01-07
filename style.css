@@ -11,12 +11,17 @@ Version:      1.0.0
 /* Import the parent theme's styles */
 @import url("../magzine/style.css");
 
-#vr-homepage-banner {
+/* #vr-homepage-banner {
   background-position: center -50rem;
-}
+} */
 
-.current-menu-item > a {
-  border-color: var(--e-global-color-b3c880b) !important;
+/* #item-header #cover-image-container #header-cover-image {
+  background-color: white;
+} */
+
+#liability_waiver {
+  resize: none; /* Disable manual resizing */
+  width: 100%; /* Optional: adjust width to fit layout */
 }
 
 #vr-logo-container {
