@@ -28,6 +28,10 @@ Version:      1.0.0
   padding: 0 1rem;
 }
 
+/* .simcal-default-calendar-dark .simcal-nav-button {
+  color: black;
+} */
+
 @media all and (max-width: 1023px) and (orientation: landscape) {
   #vr-home-members-banner {
     padding: 5rem 1rem;

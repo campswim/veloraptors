@@ -193,10 +193,50 @@ function dynamic_home_url_shortcode() {
 }
 add_shortcode('home_url', 'dynamic_home_url_shortcode');
 
-// add_action('wp_footer', function() {
-//   echo '<pre>' . home_url() . '</pre>';
-// });
-
+// Hide the WP admin bar when a logged-in user isn't an administrator.
 if (!current_user_can('administrator')) {
   add_filter('show_admin_bar', '__return_false');
 }
+
+// Change the status of a new PMPro order to "pending" if the payment method is "check".
+function update_order_status_to_pending($user_id, $order) {
+  global $wpdb;
+
+  // Check if the payment method is 'check'
+  if ($order->payment_type === 'Check') {
+
+    error_log('ian wuz ere.');
+
+      // Update the status to 'pending' in the database
+      $wpdb->update(
+          "{$wpdb->prefix}pmpro_membership_orders", // Table name
+          array( 'status' => 'pending' ), // Data to update
+          array( 'id' => $order->id ), // Where clause
+          array( '%s' ), // Format for 'status'
+          array( '%d' )  // Format for 'id'
+      );
+  }
+}
+add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
+
+// Add the link "Groups" to the right main menu when a user is logged in.
+function add_dynamic_menu_link($items, $args) {
+  if ($args->menu === 'right-main-menu' && is_user_logged_in()) {
+    $user = wp_get_current_user();
+    $link = site_url('/members/' . $user->user_login . '/groups/');    
+    $html = '<li id="menu-item-custom-group" class="menu-item menu-item-type-custom menu-item-object-custom"><a class="gp-menu-link" href="' . $link . '">Groups</a></li>';
+
+    // Find the position of the "Friends" link and add the new link after it
+    $friends_position = strpos($items, 'Friends</a></li>');
+    if ($friends_position !== false) {
+      $items = substr_replace($items, $html, $friends_position + 16, 0);
+    }
+  }
+  return $items;
+}
+add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
+
+// // A method for echoing content to the footer, used to debug.
+// add_action('wp_footer', function() {
+//   echo '<pre>' . home_url() . '</pre>';
+// });

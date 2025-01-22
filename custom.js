@@ -112,3 +112,7 @@ jQuery(document).ready(function($) {
     }, 500); // Delay to wait for Elementor to process the page load
   }
 });
+
+// Change the color of the Simple Calendar nav arrows so they'll show.
+const navArrows = document.querySelectorAll('.simcal-nav-button');
+if (navArrows) navArrows.forEach(arrow => arrow.style.color = 'black');
