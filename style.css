@@ -9,15 +9,7 @@ Version:      1.0.0
 */
 
 /* Import the parent theme's styles */
-@import url("../magzine/style.css");
-
-/* #vr-homepage-banner {
-  background-position: center -50rem;
-} */
-
-/* #item-header #cover-image-container #header-cover-image {
-  background-color: white;
-} */
+@import url('../magzine/style.css');
 
 #liability_waiver {
   resize: none; /* Disable manual resizing */
@@ -28,9 +20,9 @@ Version:      1.0.0
   padding: 0 1rem;
 }
 
-/* .simcal-default-calendar-dark .simcal-nav-button {
-  color: black;
-} */
+body.gp-level {
+  padding: 20px;
+}
 
 @media all and (max-width: 1023px) and (orientation: landscape) {
   #vr-home-members-banner {

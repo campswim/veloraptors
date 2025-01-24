@@ -9,6 +9,11 @@ add_action('wp_enqueue_scripts', 'magzine_child_enqueue_styles');
 // Enqueue the child theme's scripts.
 function enqueue_child_theme_scripts() {
   wp_enqueue_script('custom-js', get_stylesheet_directory_uri() . '/custom.js', array('jquery'), '1.0', true);
+
+  // Pass the current URI to the script
+  wp_localize_script('custom-js', 'siteData', array(
+      'pageUri' => trim($_SERVER['REQUEST_URI'], '/')
+  ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
 
@@ -38,7 +43,7 @@ function handle_rsvp_redirect() {
     exit;
   }
 }
-add_action( 'template_redirect', 'handle_rsvp_redirect' );
+// add_action( 'template_redirect', 'handle_rsvp_redirect' );
 
 // Creates the RSVP parent page, the event child page, and the date grandchild page.
 function create_event_rsvp_page( $event_title, $event_date ) {
@@ -138,7 +143,7 @@ function add_custom_rsvp_rewrite_rule() {
     // 'index.php?pagename=rsvp/$matches[1]/$matches[2]&post_type=page',
   );
 }
-add_action( 'init', 'add_custom_rsvp_rewrite_rule' );
+// add_action( 'init', 'add_custom_rsvp_rewrite_rule' );
 
 // Adds the query vars "event" and "date" to the $wp_query->query_vars array.
 function add_custom_rsvp_query_vars( $vars ) {
@@ -146,7 +151,7 @@ function add_custom_rsvp_query_vars( $vars ) {
   $vars[] = 'date';
   return $vars;
 }
-add_filter( 'query_vars', 'add_custom_rsvp_query_vars' );
+// add_filter( 'query_vars', 'add_custom_rsvp_query_vars' );
 
 // Ensures that the page being accessed is the specific event's RSVP page for a specific date.
 add_action( 'pre_get_posts', function ( $query ) {
@@ -184,14 +189,25 @@ function rsvp_template_redirect( $template ) {
   }
   return $template;
 }
-add_filter( 'template_include', 'rsvp_template_redirect' );
-
+// add_filter( 'template_include', 'rsvp_template_redirect' );
 
 // Shortcode to output the site URL dynamically.
 function dynamic_home_url_shortcode() {  
   return esc_url( home_url() );
 }
 add_shortcode('home_url', 'dynamic_home_url_shortcode');
+
+// Make Elementor widgets accept shortcodes in their settings.
+add_action('elementor/widget/before_render_content', function($widget) {
+  $settings = $widget->get_settings();
+
+  // Check if 'custom_link' exists and contains the shortcode
+  if (isset($settings['custom_link']['url']) && strpos($settings['custom_link']['url'], '[home_url]') !== false) {
+    // Process the shortcode and update the 'custom_link' URL
+    $settings['custom_link']['url'] = do_shortcode($settings['custom_link']['url']);
+    $widget->set_settings('custom_link', $settings['custom_link']);
+  }
+});
 
 // Hide the WP admin bar when a logged-in user isn't an administrator.
 if (!current_user_can('administrator')) {
@@ -204,9 +220,6 @@ function update_order_status_to_pending($user_id, $order) {
 
   // Check if the payment method is 'check'
   if ($order->payment_type === 'Check') {
-
-    error_log('ian wuz ere.');
-
       // Update the status to 'pending' in the database
       $wpdb->update(
           "{$wpdb->prefix}pmpro_membership_orders", // Table name
@@ -223,7 +236,10 @@ add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 function add_dynamic_menu_link($items, $args) {
   if ($args->menu === 'right-main-menu' && is_user_logged_in()) {
     $user = wp_get_current_user();
-    $link = site_url('/members/' . $user->user_login . '/groups/');    
+
+    error_log('User: ' . print_r($user, true));
+
+    $link = site_url('/members/' . $user->user_nicename . '/groups/');    
     $html = '<li id="menu-item-custom-group" class="menu-item menu-item-type-custom menu-item-object-custom"><a class="gp-menu-link" href="' . $link . '">Groups</a></li>';
 
     // Find the position of the "Friends" link and add the new link after it
@@ -235,6 +251,81 @@ function add_dynamic_menu_link($items, $args) {
   return $items;
 }
 add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
+
+// Restrict the "Members" and "Board Members" menu items and subitems to users with the corresponding membership level.
+function restrict_menu_to_board_members($items) {
+  // Track parent item keys to remove child items
+  $parent_keys_to_remove = [];
+
+  foreach ($items as $key => $item) {
+    // Check for "Board Members"
+    if (strpos($item->title, 'Board Members') !== false) {
+      // Check if the user has the 'Board Member' level
+      if (!pmpro_hasMembershipLevel('Board Member')) {
+        $parent_keys_to_remove[] = $item->ID;
+        unset($items[$key]);
+      }
+    }
+
+    // Remove child items if the parent "Members" has been removed
+    foreach ($items as $key => $item) {
+      // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
+      if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
+        unset($items[$key]);
+      }
+    }
+
+    $parent_keys_to_remove = [];
+
+    // Check for "Members"
+    if (strpos($item->title, 'Members') !== false) {      
+      // Check if the user has the 'Member' level
+      if (!pmpro_hasMembershipLevel('Member')) {
+        // Add parent item key to remove its children later
+        $parent_keys_to_remove[] = $item->ID;
+        unset($items[$key]);
+      }
+    }
+  }
+
+  // Remove child items if the parent "Members" has been removed
+  foreach ($items as $key => $item) {
+    // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
+    if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
+      unset($items[$key]);
+    }
+  }
+
+  return $items;
+}
+add_filter('wp_nav_menu_objects', 'restrict_menu_to_board_members', 10, 2);
+
+// Redirect user to homepage after logout, not the WP login page.
+function custom_logout_redirect() {
+  wp_redirect( home_url() ); 
+  exit();
+}
+add_action('wp_logout', 'custom_logout_redirect');
+
+// Correct GhostPool's "login_member_redirect" key to redirect to the homepage. (It incorrectly adds the home url twice in login-form.php. It could be updated there, but this is a more general solution that should work even after an update.)
+add_action('init', function () {
+  // Check if we're handling a form submission with the problematic key
+  if (
+      isset($_POST['action']) &&
+      $_POST['action'] === 'form_processing' &&
+      isset($_POST['login_member_redirect'])
+  ) {
+      // Fix the redirect URL
+      $_POST['login_member_redirect'] = home_url();
+  }
+});
+add_filter('logout_redirect', function ($redirect_to, $requested_redirect_to, $user) {
+  // Ensure the redirect URL is valid
+  if (empty($redirect_to) || !is_string($redirect_to)) {
+    return home_url(); // Default to home URL if invalid
+  }
+  return $redirect_to;
+}, 10, 3);
 
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {

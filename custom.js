@@ -124,3 +124,24 @@ jQuery(document).ready(function ($) {
 // Change the color of the Simple Calendar nav arrows so they'll show.
 const navArrows = document.querySelectorAll('.simcal-nav-button');
 if (navArrows) navArrows.forEach((arrow) => (arrow.style.color = 'black'));
+
+/* Increase the max-width of the container when the page is full-roster. */
+// Ensure the siteData variable exists
+if (typeof siteData !== 'undefined' && siteData.pageUri === 'full-roster') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @media all and (min-width: 1024px) {
+      .elementor-section.elementor-section-boxed > .elementor-container {
+        max-width: 60% !important;
+      }
+      .elementor-section.elementor-section-boxed > .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title {
+        margin-top: 4rem;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// Hide the "Most Popular" tag on the find-your-plan page.
+const mostPopularTag = document.querySelector('.gp-level-badge');
+if (mostPopularTag) mostPopularTag.style.display = 'none';
