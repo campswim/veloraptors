@@ -24,6 +24,19 @@ body.gp-level {
   padding: 20px;
 }
 
+textarea::placeholder {
+  color: white;
+  font-weight: bold;
+}
+
+textarea:focus::placeholder {
+  color: transparent;
+}
+
+.gp-level-2 {
+  display: none;
+}
+
 @media all and (max-width: 1023px) and (orientation: landscape) {
   #vr-home-members-banner {
     padding: 5rem 1rem;

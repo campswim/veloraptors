@@ -143,5 +143,16 @@ if (typeof siteData !== 'undefined' && siteData.pageUri === 'full-roster') {
 }
 
 // Hide the "Most Popular" tag on the find-your-plan page.
-const mostPopularTag = document.querySelector('.gp-level-badge');
-if (mostPopularTag) mostPopularTag.style.display = 'none';
+const mostPopularTag = document.querySelectorAll('.gp-level-badge');
+if (mostPopularTag) {
+  Object.values(mostPopularTag).forEach((tag) => {
+    tag.style.display = 'none';
+  });
+}
+
+// Disable the "Board Member" level selection button.
+const boardMemberLevelSelectButton =
+  document.querySelector('.gp-level')?.lastChild;
+if (boardMemberLevelSelectButton) {
+  boardMemberLevelSelectButton.innerHTML = '';
+}

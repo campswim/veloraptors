@@ -237,8 +237,6 @@ function add_dynamic_menu_link($items, $args) {
   if ($args->menu === 'right-main-menu' && is_user_logged_in()) {
     $user = wp_get_current_user();
 
-    error_log('User: ' . print_r($user, true));
-
     $link = site_url('/members/' . $user->user_nicename . '/groups/');    
     $html = '<li id="menu-item-custom-group" class="menu-item menu-item-type-custom menu-item-object-custom"><a class="gp-menu-link" href="' . $link . '">Groups</a></li>';
 
@@ -253,7 +251,11 @@ function add_dynamic_menu_link($items, $args) {
 add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
 
 // Restrict the "Members" and "Board Members" menu items and subitems to users with the corresponding membership level.
-function restrict_menu_to_board_members($items) {
+function restrict_menu_to_members($items) {
+
+  $current_user_id = get_current_user_id();
+  $membership = pmpro_getMembershipLevelForUser($current_user_id);
+
   // Track parent item keys to remove child items
   $parent_keys_to_remove = [];
 
@@ -266,19 +268,22 @@ function restrict_menu_to_board_members($items) {
         unset($items[$key]);
       }
     }
+  }
 
-    // Remove child items if the parent "Members" has been removed
-    foreach ($items as $key => $item) {
-      // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
-      if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
-        unset($items[$key]);
-      }
+  // Remove child items if the parent "Members" has been removed
+  foreach ($items as $key => $item) {
+    // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
+    if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
+      unset($items[$key]);
     }
+  }
 
-    $parent_keys_to_remove = [];
+  // Clear the array of keys to remove.
+  $parent_keys_to_remove = [];
 
-    // Check for "Members"
-    if (strpos($item->title, 'Members') !== false) {      
+  // Check for "Members".
+  foreach ($items as $key => $item) {
+    if ($item->title === 'Members') {
       // Check if the user has the 'Member' level
       if (!pmpro_hasMembershipLevel('Member')) {
         // Add parent item key to remove its children later
@@ -296,9 +301,19 @@ function restrict_menu_to_board_members($items) {
     }
   }
 
+  // Check for the public calendar and remove it if the user is a member.
+  foreach ($items as $key => $item) {
+    if ($item->title === 'Calendar' && empty( $item->menu_item_parent )) {
+      // Check if the user has the 'Member' level
+      if (pmpro_hasMembershipLevel('Member')) {
+        unset($items[$key]);
+      }
+    }
+  }
+
   return $items;
 }
-add_filter('wp_nav_menu_objects', 'restrict_menu_to_board_members', 10, 2);
+add_filter('wp_nav_menu_objects', 'restrict_menu_to_members', 10, 2);
 
 // Redirect user to homepage after logout, not the WP login page.
 function custom_logout_redirect() {
