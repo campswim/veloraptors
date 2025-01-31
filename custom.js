@@ -1,158 +1,248 @@
-// Add the RSVP link dynamically to the calendar.
-const currentCalendar = document.querySelector('.simcal-current');
-if (currentCalendar) {
-  // Get today's date.
-  const today = new Intl.DateTimeFormat('en-US', {
+const getTodaysDate = () => {
+  return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
+    month: 'numeric',
     day: 'numeric',
   }).format(new Date());
+};
 
-  // Get the value of the 'data-calendar-current' attribute and convert it into month and year.
-  const dataEventsFirst = currentCalendar.getAttribute('data-calendar-current');
-  const date = new Date(parseInt(dataEventsFirst * 1000));
-  let month = date.getMonth() + 1; // Add 1 to get a 1-based month
-  const year = date.getFullYear();
-  const eventDetails = document.querySelectorAll('.simcal-event-details');
-  let eventTitle = '',
-    day = '';
+// Add RSVP links to all events in the Simple Calendar.
+const addRSVPLink = () => {
+  // Add the RSVP link dynamically to the calendar.
+  const currentCalendar = document.querySelector('.simcal-current');
+  
+  if (currentCalendar) {
+    // Get today's date.
+    const today = getTodaysDate();
+    const [todaysMonth, todaysDay] = today?.split('/');
 
-  // Add a mouseover listener to all events.
-  document.querySelectorAll('.simcal-events').forEach((element) => {
-    element.addEventListener('click', (event) => {
-      eventTitle = event?.target?.innerText;
+    // Get the value of the 'data-calendar-current' attribute and convert it into month and year.
+    const dataEventsFirst = currentCalendar.getAttribute('data-calendar-current');
+    const date = new Date(parseInt(dataEventsFirst * 1000));
+    let month = date.getMonth() + 1; // Add 1 to get a 1-based month
+    const year = date.getFullYear();
+    const eventDetails = document.querySelectorAll('.simcal-event-details');
+    let eventTitle = '', day = '';
 
-      // Get the event's day.
-      day =
-        event?.target?.parentElement?.parentElement?.previousElementSibling
-          ?.innerText;
+    // Add a click listener to all events.
+    document.querySelectorAll('.simcal-events').forEach(element => {
+      element.addEventListener('click', event => {
+        eventTitle = event?.target?.innerText;
 
-      if (eventTitle && day && Number(today) <= Number(day)) {
-        if (day.length === 1) day = `0${day}`;
-        if (JSON.stringify(month).length === 1) month = `0${month}`;
-        eventTitle = eventTitle.split(' ').join('-').toLowerCase();
-        const dateFormatted = `${year}-${month}-${day}`;
-        const regex = /(^|\s)simcal-event-start-date(\s|$)/;
+        // Get the event's day.
+        day = event?.target?.parentElement?.parentElement?.previousElementSibling?.innerText;
 
-        if (eventDetails) {
-          eventDetails.forEach((event) => {
-            let detailsDate = '';
+        if (eventTitle && day && (Number(todaysDay) <= Number(day) || Number(todaysMonth) < month)) {
+          if (day.length === 1) day = `0${day}`;
+          if (JSON.stringify(month).length === 1) month = `0${month}`;
+          eventTitle = eventTitle.split(' ').join('-').toLowerCase();
 
-            // Get the event detail's date for squaring with the chosen date.
-            event?.childNodes.forEach((node) => {
-              const childNodes = node?.childNodes;
+          const dateFormatted = `${year}-${month}-${day}`;
+          const regex = /(^|\s)simcal-event-start-date(\s|$)/;
 
-              if (childNodes) {
-                childNodes.forEach((childNode) => {
-                  const classes = childNode?.className;
+          if (eventDetails) {
+            eventDetails.forEach(event => {
+              let detailsDate = '';
 
-                  if (classes && regex.test(classes)) {
-                    const attributes = childNode?.attributes;
+              // Get the event detail's date for squaring with the chosen date.
+              event?.childNodes.forEach(node => {
+                const childNodes = node?.childNodes;
 
-                    if (attributes) {
-                      Array.from(attributes).forEach((attribute) => {
-                        if (attribute.name === 'content')
-                          detailsDate = attribute.textContent.split('T')[0];
-                      });
+                if (childNodes) {
+                  childNodes.forEach(childNode => {
+                    const classes = childNode?.className;
+
+                    if (classes && regex.test(classes)) {
+                      const attributes = childNode?.attributes;
+
+                      if (attributes) {
+                        Array.from(attributes).forEach(attribute => {
+                          if (attribute.name === 'content')
+                            detailsDate = attribute.textContent.split('T')[0];
+                        });
+                      }
                     }
-                  }
-                });
+                  });
+                }
+              });
+
+              if (detailsDate === dateFormatted) {
+                const descriptionElement = event;
+
+                if (
+                  descriptionElement &&
+                  !descriptionElement.querySelector('.rsvp-link')
+                ) {
+                  const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
+                  const rsvpUrl = window.location.origin + eventPath;
+                  const htmlContent = `<br /><a href="${rsvpUrl}" target="_blank" rel="noopener noreferrer">RSVP</a> for this event.`;
+                  const newChildNode = document.createElement('p');
+                  newChildNode.className = 'rsvp-link';
+                  newChildNode.innerHTML = htmlContent;
+                  descriptionElement.appendChild(newChildNode);
+                }
               }
             });
-
-            if (detailsDate === dateFormatted) {
-              const descriptionElement = event;
-
-              if (
-                descriptionElement &&
-                !descriptionElement.querySelector('.rsvp-link')
-              ) {
-                const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
-                const rsvpUrl = window.location.origin + eventPath;
-                const htmlContent = `<br /><a href="${rsvpUrl}" target="_blank" rel="noopener noreferrer">RSVP</a> for this event.`;
-                const newChildNode = document.createElement('p');
-                newChildNode.className = 'rsvp-link';
-                newChildNode.innerHTML = htmlContent;
-                descriptionElement.appendChild(newChildNode);
-              }
-            }
-          });
-        }
-      }
-    });
-  });
-}
-
-// Open tabs dynamically and disable the default scrolling to the hash.
-jQuery(document).ready(function ($) {
-  const hash = window.location.hash;
-
-  if (hash) {
-    // Remove the hash immediately to prevent any default scrolling behavior.
-    history.pushState(null, null, window.location.href.split('#')[0]);
-
-    // Prevent any scrolling due to hash by monitoring the page's DOM and applying a fix.
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          // Ensure no automatic scroll.
-          $('html, body').scrollTop(0);
+          }
         }
       });
     });
-
-    // Configure the observer to watch for changes in the body (adding/removing elements).
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-    });
-
-    // After page load and mutation is settled, open the tab.
-    setTimeout(function () {
-      const targetTabButton = $(hash); // Get the tab button using the hash.
-      if (targetTabButton.length) {
-        // Trigger the tab click event
-        targetTabButton.trigger('click');
-      }
-
-      // Stop observing once the tab has been triggered.
-      observer.disconnect();
-    }, 100); // Delay to wait for Elementor to process the page load.
   }
-});
+};
 
-// Change the color of the Simple Calendar nav arrows so they'll show.
-const navArrows = document.querySelectorAll('.simcal-nav-button');
-if (navArrows) navArrows.forEach((arrow) => (arrow.style.color = 'black'));
+// Correct the disabled attribute of the Simple Calendar based on the current months and start and end months. (The plugin doesn't do this accurately.)
+const correctCalNavButtons = () => {
+  const simpleCalendar = document.querySelector('.simcal-calendar');
+  const currentCalendar = document.querySelector('.simcal-current');
+  const navArrows = document.querySelectorAll('.simcal-nav-button');  
+  const currentCalendarTimestamp = currentCalendar.getAttribute('data-calendar-current');
+  const currentCalendarDate = new Date(parseInt(currentCalendarTimestamp * 1000));
+  const currentCalendarMonth = currentCalendarDate.getMonth() + 1; // Add 1 to get a 1-based month.
+  const currentCalendarYear = currentCalendarDate.getFullYear();
+  let startMonth, startYear, endMonth, endYear, prevArrow, nextArrow;
 
-/* Increase the max-width of the container when the page is full-roster. */
-// Ensure the siteData variable exists
-if (typeof siteData !== 'undefined' && siteData.pageUri === 'full-roster') {
-  const style = document.createElement('style');
-  style.textContent = `
-    @media all and (min-width: 1024px) {
-      .elementor-section.elementor-section-boxed > .elementor-container {
-        max-width: 60% !important;
-      }
-      .elementor-section.elementor-section-boxed > .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title {
-        margin-top: 4rem;
-      }
+  if (simpleCalendar) {
+    let startDate = simpleCalendar.getAttribute('data-calendar-start');
+    let endDate = simpleCalendar.getAttribute('data-calendar-end');
+
+    if (startDate && endDate) {
+      startDate = new Date(parseInt(startDate * 1000));
+      endDate = new Date(parseInt(endDate * 1000));
+      startMonth = startDate.getMonth() + 1; // Add 1 to get a 1-based month
+      startYear = startDate.getFullYear();
+      endMonth = endDate.getMonth() + 1;
+      endYear = endDate.getFullYear();
     }
-  `;
-  document.head.appendChild(style);
+  }
+
+  if (navArrows) {
+    prevArrow = navArrows[0];
+    nextArrow = navArrows[1];
+  }
+
+
+  if (startMonth && startYear && endMonth && endYear && currentCalendarMonth && currentCalendarYear && prevArrow && nextArrow) {
+    if (currentCalendarMonth === startMonth) {
+      prevArrow.disabled = true;
+      nextArrow.disabled = false;
+    } else if (currentCalendarMonth === endMonth) {
+      prevArrow.disabled = false;
+      nextArrow.disabled = true;
+    } else {
+      prevArrow.disabled = false;
+      nextArrow.disabled = false;
+    }
+  }
 }
 
-// Hide the "Most Popular" tag on the find-your-plan page.
-const mostPopularTag = document.querySelectorAll('.gp-level-badge');
-if (mostPopularTag) {
-  Object.values(mostPopularTag).forEach((tag) => {
-    tag.style.display = 'none';
+// Call add RSVPLink every time a user navigates between months to ensure that the right calendar is being referenced.
+const observeCurrentCalendarChanges = () => {
+  const targetNode = document.querySelector('.simcal-current');
+
+  if (!targetNode) return;
+
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.attributeName === 'data-calendar-current') {
+        addRSVPLink();
+        correctCalNavButtons();
+      }
+    });
+  });
+
+  observer.observe(targetNode, { attributes: true });
+};
+
+// Increase the max-width of the container when the page is full-roster.
+const increaseMaxWidth = () => {
+  // Ensure the siteData variable exists.
+  if (typeof siteData !== 'undefined' && siteData.pageUri === 'full-roster') {
+    const style = document.createElement('style');
+    style.textContent = `
+      @media all and (min-width: 1024px) {
+        .elementor-section.elementor-section-boxed > .elementor-container {
+          max-width: 60% !important;
+        }
+        .elementor-section.elementor-section-boxed > .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title {
+          margin-top: 4rem;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+// Open tabs dynamically and disable the default scrolling to the hash.
+const tabRedirectAndScrollSupppression = () => {
+  jQuery(document).ready(function ($) {
+    const hash = window.location.hash;
+  
+    if (hash) {
+      // Remove the hash immediately to prevent any default scrolling behavior
+      history.replaceState(null, null, window.location.href.split('#')[0]);
+  
+      // Temporarily disable scrolling for all browsers
+      $('html, body').css({ overflow: 'hidden', 'scroll-behavior': 'auto' });
+  
+      // Force scroll to top (especially important for Safari)
+      window.scrollTo(0, 0);
+  
+      // MutationObserver to monitor DOM changes (in case other elements try to scroll)
+      const observer = new MutationObserver(() => {
+        window.scrollTo(0, 0); // Ensure scroll is always at top
+      });
+  
+      observer.observe(document.body, { childList: true, subtree: true });
+  
+      // After some time, allow scroll and trigger the tab
+      setTimeout(() => {
+        // Allow scrolling again
+        $('html, body').css({ overflow: '', 'scroll-behavior': '' });
+  
+        // Open the tab using the hash
+        const targetTabButton = $(hash);
+        if (targetTabButton.length) {
+          targetTabButton.trigger('click');
+        }
+  
+        // Stop observing after the action is completed
+        observer.disconnect();
+      }, 500); // Longer delay for Safari's rendering and scroll behavior
+  
+      // Extra safeguard: attempt to block Safari's scroll restoration
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 0); // A small delay to ensure it's the last thing Safari processes
+    }
   });
 }
 
-// Disable the "Board Member" level selection button.
-const boardMemberLevelSelectButton =
-  document.querySelector('.gp-level')?.lastChild;
-if (boardMemberLevelSelectButton) {
-  boardMemberLevelSelectButton.innerHTML = '';
+// Hide the "Most Popular" tag on the find-your-plan page.
+const hidePopularTag = () => {
+  const mostPopularTag = document.querySelectorAll('.gp-level-badge');
+  
+  if (mostPopularTag) {
+    Object.values(mostPopularTag).forEach(tag => {
+      tag.style.display = 'none';
+    });
+  }
 }
+
+// Disable the "Select" button for the Board Member level. (This occurs on two differenet pages.)
+const disableBoardMemberSelect = () => {
+  const pmproSelectButtonOne = document.querySelector('.pmpro_btn');
+  const pmproSelectButtonTwo = document.querySelector('.gp-level')?.lastChild;
+  
+  if (pmproSelectButtonOne) pmproSelectButtonOne.href = '';
+  if (pmproSelectButtonTwo) pmproSelectButtonTwo.innerHTML = '';
+}
+
+// Call JS functions only after the DOM has been loaded.
+document.addEventListener('DOMContentLoaded', () => {
+  addRSVPLink();
+  observeCurrentCalendarChanges();
+  increaseMaxWidth();
+  tabRedirectAndScrollSupppression();
+  hidePopularTag();
+  disableBoardMemberSelect();
+});

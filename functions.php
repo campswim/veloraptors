@@ -1,4 +1,7 @@
 <?php
+// Import the code responsible for the RSVP feature.
+require_once get_stylesheet_directory() . '/rsvp-functions.php';
+
 // Enqueue the parent theme's stylesheet
 function magzine_child_enqueue_styles() {
     wp_enqueue_style('magzine-style', get_template_directory_uri() . '/style.css');
@@ -16,180 +19,6 @@ function enqueue_child_theme_scripts() {
   ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
-
-// Triggers the creation of the event's RSVP page and causes the redirect.
-function handle_rsvp_redirect() {
-  if ( isset( $_GET['event'] ) && isset( $_GET['date'] ) ) {
-    $event_title = sanitize_text_field( $_GET['event'] );
-    $event_date = sanitize_text_field( $_GET['date'] );
-
-    $page_slug = 'rsvp/' . $event_title . '/' . $event_date;
-    $page = get_page_by_path( $page_slug );
-
-    if ( $page && $page->post_type === 'page' ) {
-      // Redirect only if the page is a valid page.
-      wp_redirect( get_permalink( $page->ID ) );
-      exit;
-    }
-
-    // Create a new RSVP page if it doesn't exist
-    $page_id = create_event_rsvp_page( $event_title, $event_date );
-
-    $post = get_post( $page_id );
-    error_log( 'Post Type for RSVP Page: ' . $post->post_type );
-
-    // Redirect to the RSVP page
-    wp_redirect( get_permalink( $page_id ) );
-    exit;
-  }
-}
-// add_action( 'template_redirect', 'handle_rsvp_redirect' );
-
-// Creates the RSVP parent page, the event child page, and the date grandchild page.
-function create_event_rsvp_page( $event_title, $event_date ) {
-  // Step 1: Create the 'RSVP' parent page if it doesn't exist.
-  $rsvp_page = get_page_by_path( 'rsvp' );
-  if ( ! $rsvp_page ) {
-    $rsvp_page = wp_insert_post( array(
-      'post_title'  => 'RSVP',
-      'post_name'   => 'rsvp',
-      'post_status' => 'publish',
-      'post_type'   => 'page',
-    ) );
-  }
-  $rsvp_parent_id = is_object( $rsvp_page ) ? $rsvp_page->ID : $rsvp_page;
-
-  // Step 2: Create the 'event-title' child page under 'RSVP'
-  $event_title_slug = sanitize_title( $event_title );
-  $event_title_page = get_page_by_path( 'rsvp/' . $event_title_slug );
-  $post_title = str_contains( $event_title, '-' ) ? ucwords( str_replace( '-', ' ', $event_title ) ) : $event_title;
-
-  if ( ! $event_title_page ) {
-    $event_title_page = wp_insert_post( array(
-      'post_title'   => $post_title,
-      'post_name'    => $event_title_slug,
-      'post_status'  => 'publish',
-      'post_type'    => 'page',
-      'post_parent'  => $rsvp_parent_id,
-    ) );
-  }
-  $event_title_id = is_object( $event_title_page ) ? $event_title_page->ID : $event_title_page;
-
-  // Step 3: Create the 'event-date' sub-child page under 'event-title'.
-  $event_date_slug = sanitize_title( $event_date );
-  $event_date_page = get_page_by_path( 'rsvp/' . $event_title_slug . '/' . $event_date_slug );
-  if ( ! $event_date_page ) {
-    $event_date_page = wp_insert_post( array(
-      'post_title'   => $post_title . ' | ' . $event_date,
-      'post_name'    => $event_date_slug,
-      'post_status'  => 'publish',
-      'post_type'    => 'page',
-      'post_parent'  => $event_title_id,
-      'post_content' => 'RSVP for ' . $post_title . ' | ' . $event_date,
-    ) );
-  }
-  $event_date_id = is_object( $event_date_page ) ? $event_date_page->ID : $event_date_page;
-
-  // Step 4: Add the RSVP block to the 'event-date' page.
-  $rsvp_id = create_event_rsvp( $event_date_id, $event_title, $event_date );
-  if ( $rsvp_id ) {
-    $current_content = get_post_field( 'post_content', $event_date_id );
-    $rsvp_block_content = '<!-- wp:tribe/rsvp {"ticketId":' . $rsvp_id . '} /-->';    
-    $new_content = $current_content . "\n" . $rsvp_block_content;
-    
-    wp_update_post( array(
-      'ID'           => $event_date_id,
-      'post_content' => $new_content,
-    ) );
-  }
-
-  return $event_date_id;
-}
-
-// Creates and inserts the Event Tickets RSVP block. It is also supposed to configure and instantiate the block, but this feature works, ostensibly, only with Event Tickets Plus, which costs nearly $200/year. The error being returned is a 401, suggesting failed authorization (for the Event Tickets API). The block does appear on the page in the WP editor, however, though it is not configured.
-function create_event_rsvp( $page_id, $event_title, $event_date ) {
-  // Set up the RSVP post.
-  $rsvp_data = array(
-    'post_title'   => $event_title . ' on ' . $event_date . ' RSVP',
-    'post_content' => 'Please RSVP for this event.',
-    'post_status'  => 'publish',
-    'post_type'    => 'tribe_rsvp', // Event Tickets RSVP post type
-  );
-
-  // Insert the RSVP post.
-  $rsvp_id = wp_insert_post( $rsvp_data );
-
-  // $post = get_post( $rsvp_id );
-  // error_log( 'RSVP Post: ' . print_r( $post, true ) );
-
-  if ( $rsvp_id ) {
-    // Add meta fields required by the Event Tickets plugin
-    update_post_meta( $rsvp_id, '_tribe_rsvp_form_page', $page_id );
-    update_post_meta( $rsvp_id, '_tribe_rsvp_total_capacity', 30 );
-    update_post_meta( $rsvp_id, '_tribe_rsvp_tickets_left', 30 );
-    update_post_meta( $rsvp_id, '_tribe_rsvp_ticket_type', 'rsvp' );
-    update_post_meta( $rsvp_id, '_tribe_tickets_enabled', true );
-    update_post_meta( $rsvp_id, '_tribe_rsvp_event_date', $event_date );
-  }
-
-  return $rsvp_id;
-}
-
-// Ads the rewrite rule that handles the RSVP-page redirect.
-function add_custom_rsvp_rewrite_rule() {
-  add_rewrite_rule(
-    '^rsvp/([^/]+)/([^/]+)/?$',
-    'index.php?event=$matches[1]&date=$matches[2]',
-    // 'index.php?pagename=rsvp/$matches[1]/$matches[2]&post_type=page',
-  );
-}
-// add_action( 'init', 'add_custom_rsvp_rewrite_rule' );
-
-// Adds the query vars "event" and "date" to the $wp_query->query_vars array.
-function add_custom_rsvp_query_vars( $vars ) {
-  $vars[] = 'event';
-  $vars[] = 'date';
-  return $vars;
-}
-// add_filter( 'query_vars', 'add_custom_rsvp_query_vars' );
-
-// Ensures that the page being accessed is the specific event's RSVP page for a specific date.
-add_action( 'pre_get_posts', function ( $query ) {
-  if ( ! is_admin() && $query->is_main_query() && isset( $query->query_vars['event'], $query->query_vars['date'] ) ) {
-    $page_slug = 'rsvp/' . $query->query_vars['event'] . '/' . $query->query_vars['date'];
-
-    // Set the post type as page.
-    if ( empty($query->query_vars['pagename']) || $query->query_vars['pagename'] !== $page_slug ) {
-      $query->set( 'post_type', 'page' ); // Ensure it's a page.
-      $query->set( 'pagename', $page_slug );
-    }
-    
-    // error_log( 'is_page: ' . ( is_page() ? 'true' : 'false' ) );
-
-    $page = get_page_by_path( $page_slug );
-    if ( $page ) {
-      error_log( 'Page exists: ' . print_r( $page, true ) );
-      $query->set( 'pagename', $page_slug );
-      global $post;
-      $post = $page;
-      setup_postdata( $post );
-    } else {
-      error_log( 'Page not found for slug: ' . $page_slug );
-    }
-
-    // error_log( 'Query Vars: ' . print_r( $query->query_vars, true ) );
-  }
-} );
-
-// Force the event's RSVP page to be created using the single.php template.
-function rsvp_template_redirect( $template ) {
-  // Check if 'event' and 'date' query vars are set (i.e., it's an RSVP page).
-  if ( get_query_var( 'event' ) && get_query_var( 'date' ) ) {
-    return locate_template( 'single.php' );
-  }
-  return $template;
-}
-// add_filter( 'template_include', 'rsvp_template_redirect' );
 
 // Shortcode to output the site URL dynamically.
 function dynamic_home_url_shortcode() {  
@@ -220,21 +49,60 @@ function update_order_status_to_pending($user_id, $order) {
 
   // Check if the payment method is 'check'
   if ($order->payment_type === 'Check') {
-      // Update the status to 'pending' in the database
-      $wpdb->update(
-          "{$wpdb->prefix}pmpro_membership_orders", // Table name
-          array( 'status' => 'pending' ), // Data to update
-          array( 'id' => $order->id ), // Where clause
-          array( '%s' ), // Format for 'status'
-          array( '%d' )  // Format for 'id'
-      );
+    // Update the status to 'pending' in the database
+    $wpdb->update(
+        "{$wpdb->prefix}pmpro_membership_orders", // Table name
+        array( 'status' => 'pending' ), // Data to update
+        array( 'id' => $order->id ), // Where clause
+        array( '%s' ), // Format for 'status'
+        array( '%d' )  // Format for 'id'
+    );
+
+    // Remove the membership level so it's not active yet.
+    pmpro_cancelMembershipLevel($order->membership_id, $user_id);
   }
 }
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 
+// Activate or deactivate the membership based on the payment's status of "pending" or "success"; set the expiration date for one year.
+function log_pmpro_update_order($order) {
+  if ($order->gateway == 'check') {
+    if ($order->status === 'success') {
+      pmpro_changeMembershipLevel($order->membership_id, $order->user_id); // Activate the membership.
+
+      // Get the expiration timestamp (one year from now)
+      $expiration_timestamp = strtotime('+1 year'); // Get the Unix timestamp
+
+      // Ensure the expiration timestamp is an integer (just for extra safety)
+      $expiration_timestamp = (int) $expiration_timestamp;
+
+      // Format the expiration timestamp into MySQL-compatible datetime format
+      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp); // Force the timestamp to be treated as an integer
+      
+      update_user_meta($order->user_id, 'pmpro_membership_expires', $expiration_date); // Set the expiration date for the membership.
+
+      // Now update the user's membership enddate directly in the database
+      global $wpdb;
+
+      // Update the expiration date in the `pmpro_memberships_users` table
+      $updated_rows = $wpdb->update(
+        $wpdb->prefix . 'pmpro_memberships_users',
+        array('enddate' => $expiration_date),  // Set the expiration (enddate)
+        array('user_id' => $order->user_id),   // Target the user by user_id
+        array('%s'),                           // Format for the enddate (datetime)
+        array('%d')                            // Format for the user_id
+      );
+    } else if ($order->status === 'pending') {
+      // Remove the membership level so it's not active yet.
+      pmpro_cancelMembershipLevel($order->membership_id, $order->user_id);
+    }
+  }
+}
+add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
+
 // Add the link "Groups" to the right main menu when a user is logged in.
 function add_dynamic_menu_link($items, $args) {
-  if ($args->menu === 'right-main-menu' && is_user_logged_in()) {
+  if ($args->menu === 'right-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel()) {
     $user = wp_get_current_user();
 
     $link = site_url('/members/' . $user->user_nicename . '/groups/');    
@@ -250,70 +118,26 @@ function add_dynamic_menu_link($items, $args) {
 }
 add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
 
-// Restrict the "Members" and "Board Members" menu items and subitems to users with the corresponding membership level.
-function restrict_menu_to_members($items) {
-
-  $current_user_id = get_current_user_id();
-  $membership = pmpro_getMembershipLevelForUser($current_user_id);
-
-  // Track parent item keys to remove child items
-  $parent_keys_to_remove = [];
-
-  foreach ($items as $key => $item) {
-    // Check for "Board Members"
-    if (strpos($item->title, 'Board Members') !== false) {
-      // Check if the user has the 'Board Member' level
-      if (!pmpro_hasMembershipLevel('Board Member')) {
-        $parent_keys_to_remove[] = $item->ID;
-        unset($items[$key]);
-      }
-    }
-  }
-
-  // Remove child items if the parent "Members" has been removed
-  foreach ($items as $key => $item) {
-    // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
-    if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
-      unset($items[$key]);
-    }
-  }
-
-  // Clear the array of keys to remove.
-  $parent_keys_to_remove = [];
-
-  // Check for "Members".
-  foreach ($items as $key => $item) {
-    if ($item->title === 'Members') {
-      // Check if the user has the 'Member' level
-      if (!pmpro_hasMembershipLevel('Member')) {
-        // Add parent item key to remove its children later
-        $parent_keys_to_remove[] = $item->ID;
-        unset($items[$key]);
-      }
-    }
-  }
-
-  // Remove child items if the parent "Members" has been removed
-  foreach ($items as $key => $item) {
-    // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
-    if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
-      unset($items[$key]);
-    }
-  }
-
-  // Check for the public calendar and remove it if the user is a member.
-  foreach ($items as $key => $item) {
-    if ($item->title === 'Calendar' && empty( $item->menu_item_parent )) {
-      // Check if the user has the 'Member' level
-      if (pmpro_hasMembershipLevel('Member')) {
-        unset($items[$key]);
+// Remove the "Calendar link from the left main menu when a member is logged in. (Logged-in nonmembers should still see the link.)
+function remove_calendar_link($items, $args) {
+  if ($args->menu === 'left-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel()) {
+    // Find the last occurrence of <li.
+    $lastLiPos = strrpos($items, '<li');
+    
+    if ($lastLiPos !== false) {
+      // Find the position of the closing </li> tag after the last <li>.
+      $lastLiClosePos = strpos($items, '</li>', $lastLiPos);
+      
+      if ($lastLiClosePos !== false) {
+        // Remove the last <li>...</li>.
+        $items = substr($items, 0, $lastLiPos) . substr($items, $lastLiClosePos + 5);
       }
     }
   }
 
   return $items;
 }
-add_filter('wp_nav_menu_objects', 'restrict_menu_to_members', 10, 2);
+add_filter('wp_nav_menu_items', 'remove_calendar_link', 10, 2);
 
 // Redirect user to homepage after logout, not the WP login page.
 function custom_logout_redirect() {
@@ -342,7 +166,98 @@ add_filter('logout_redirect', function ($redirect_to, $requested_redirect_to, $u
   return $redirect_to;
 }, 10, 3);
 
+// Revise the confirmation message.
+function custom_pmpro_confirmation_message($message, $invoice) {
+  if (strpos($message, 'payment') !== false) {
+    $replace_with = '<p>Thank you for your application to join the VeloRaptors Cycling Club. Your membership will be activated once it has been approved and your payment processed.</p>';
+  } elseif (strpos($message, 'active') !== false) {
+    $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome to the club!</p>';
+  }
+  
+  $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
+  return $message;
+}
+add_filter('pmpro_confirmation_message', 'custom_pmpro_confirmation_message', 10, 2);
+
+// Run after deleting the RSVP page.
+function flush_rewrite_rules_after_deleting_rsvp() {
+  flush_rewrite_rules();
+}
+add_action( 'wp_trash_post', 'flush_rewrite_rules_after_deleting_rsvp' );
+
+// Restrict the "Members" and "Board Members" menu items and subitems to users with the corresponding membership level. Not in use, because it made more sense within the context of the PMPro and BuddyPress integrations to make the Board Member level available to sign up and then just hide the sign-up options.
+// function restrict_menu_to_members($items) {
+
+//   $current_user_id = get_current_user_id();
+//   $membership = pmpro_getMembershipLevelForUser($current_user_id);
+
+//   // Track parent item keys to remove child items
+//   $parent_keys_to_remove = [];
+
+//   foreach ($items as $key => $item) {
+//     // Check for "Board Members"
+//     if (strpos($item->title, 'Board Members') !== false) {
+//       // Check if the user has the 'Board Member' level
+//       if (!pmpro_hasMembershipLevel('Board Member')) {
+//         $parent_keys_to_remove[] = $item->ID;
+//         unset($items[$key]);
+//       }
+//     }
+//   }
+
+//   // Remove child items if the parent "Members" has been removed
+//   foreach ($items as $key => $item) {
+//     // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
+//     if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
+//       unset($items[$key]);
+//     }
+//   }
+
+//   // Clear the array of keys to remove.
+//   $parent_keys_to_remove = [];
+
+//   // Check for "Members".
+//   foreach ($items as $key => $item) {
+//     if ($item->title === 'Members') {
+//       // Check if the user has the 'Member' level
+//       if (!pmpro_hasMembershipLevel('Member')) {
+//         // Add parent item key to remove its children later
+//         $parent_keys_to_remove[] = $item->ID;
+//         unset($items[$key]);
+//       }
+//     }
+//   }
+
+//   // Remove child items if the parent "Members" has been removed
+//   foreach ($items as $key => $item) {
+//     // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
+//     if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
+//       unset($items[$key]);
+//     }
+//   }
+
+//   // Check for the public calendar and remove it if the user is a member.
+//   foreach ($items as $key => $item) {
+//     if ($item->title === 'Calendar' && empty( $item->menu_item_parent )) {
+//       // Check if the user has the 'Member' level
+//       if (pmpro_hasMembershipLevel('Member')) {
+//         unset($items[$key]);
+//       }
+//     }
+//   }
+
+//   return $items;
+// }
+// add_filter('wp_nav_menu_objects', 'restrict_menu_to_members', 10, 2);
+
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
 //   echo '<pre>' . home_url() . '</pre>';
+// });
+
+// Log all available PMPro hooks.
+// add_action('all', function ($hook_name) {
+//   if (strpos($hook_name, 'pmpro') !== false || strpos($hook_name, 'save') !== false) {
+//     error_log("Triggered Hook: " . $hook_name);
+//   }
 // });

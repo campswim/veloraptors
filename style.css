@@ -33,7 +33,12 @@ textarea:focus::placeholder {
   color: transparent;
 }
 
+/* Hide the board-member level selector*/
 .gp-level-2 {
+  display: none;
+}
+
+#pmpro_level_group-1 {
   display: none;
 }
 
