@@ -1,3 +1,4 @@
+// Return today's date, e.g., 18.
 const getTodaysDate = () => {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
@@ -75,7 +76,7 @@ const addRSVPLink = () => {
                 ) {
                   const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
                   const rsvpUrl = window.location.origin + eventPath;
-                  const htmlContent = `<br /><a href="${rsvpUrl}" target="_blank" rel="noopener noreferrer">RSVP</a> for this event.`;
+                  const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
                   const newChildNode = document.createElement('p');
                   newChildNode.className = 'rsvp-link';
                   newChildNode.innerHTML = htmlContent;

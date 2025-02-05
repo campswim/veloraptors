@@ -159,14 +159,14 @@ add_action('init', function () {
   }
 });
 add_filter('logout_redirect', function ($redirect_to, $requested_redirect_to, $user) {
-  // Ensure the redirect URL is valid
+  // Ensure the redirect URL is valid.
   if (empty($redirect_to) || !is_string($redirect_to)) {
     return home_url(); // Default to home URL if invalid
   }
   return $redirect_to;
 }, 10, 3);
 
-// Revise the confirmation message.
+// Revise the registration confirmation message.
 function custom_pmpro_confirmation_message($message, $invoice) {
   if (strpos($message, 'payment') !== false) {
     $replace_with = '<p>Thank you for your application to join the VeloRaptors Cycling Club. Your membership will be activated once it has been approved and your payment processed.</p>';
@@ -179,76 +179,61 @@ function custom_pmpro_confirmation_message($message, $invoice) {
 }
 add_filter('pmpro_confirmation_message', 'custom_pmpro_confirmation_message', 10, 2);
 
-// Run after deleting the RSVP page.
+// Run after deleting the RSVP page to flush the rewrite rules.
 function flush_rewrite_rules_after_deleting_rsvp() {
   flush_rewrite_rules();
 }
 add_action( 'wp_trash_post', 'flush_rewrite_rules_after_deleting_rsvp' );
 
-// Restrict the "Members" and "Board Members" menu items and subitems to users with the corresponding membership level. Not in use, because it made more sense within the context of the PMPro and BuddyPress integrations to make the Board Member level available to sign up and then just hide the sign-up options.
-// function restrict_menu_to_members($items) {
+// Add a custom post type for RSVP pages.
+function custom_rsvp_post_type() {
+  $labels = array(
+    'name'               => 'RSVP Pages',
+    'singular_name'      => 'RSVP Page',
+    'menu_name'          => 'RSVP Pages',
+    'name_admin_bar'     => 'RSVP Page',
+    'add_new'            => 'Add New',
+    'add_new_item'       => 'Add New RSVP Page',
+    'new_item'           => 'New RSVP Page',
+    'edit_item'          => 'Edit RSVP Page',
+    'view_item'          => 'View RSVP Page',
+    // 'all_items'          => 'All RSVP Pages',
+    'search_items'       => 'Search RSVP Pages',
+    'not_found'          => 'No RSVP pages found.',
+    'not_found_in_trash' => 'No RSVP pages found in Trash.'
+  );
 
-//   $current_user_id = get_current_user_id();
-//   $membership = pmpro_getMembershipLevelForUser($current_user_id);
+  $args = array(
+    'labels'             => $labels,
+    'public'             => true,
+    'has_archive'        => false,
+    'show_in_menu'       => true,
+    'menu_position'      => 20,
+    'menu_icon'          => 'dashicons-calendar-alt', // WordPress Dashicon for event-related icons
+    'supports'           => array('title', 'editor', 'custom-fields', 'thumbnail'),
+    // 'rewrite'            => array(
+    //   'slug' => 'rsvp', // Base slug for the custom post type
+    //   'with_front' => false, // Don't use the "front" part of the permalink
+    //   'hierarchical' => true, // Allow nested slugs like /rsvp/{event-title}/{event-date},
+    //   'ep_mask' => EP_PERMALINK,
+    // ),
+    // 'rewrite' => true,
+    'capability_type'    => 'post',
+    'hierarchical'       => true, // Important for nested pages
+    // 'publicly_queryable' => true,
+  );
 
-//   // Track parent item keys to remove child items
-//   $parent_keys_to_remove = [];
+  register_post_type('rsvp', $args);
+  flush_rewrite_rules();
+}
+add_action('init', 'custom_rsvp_post_type');
 
-//   foreach ($items as $key => $item) {
-//     // Check for "Board Members"
-//     if (strpos($item->title, 'Board Members') !== false) {
-//       // Check if the user has the 'Board Member' level
-//       if (!pmpro_hasMembershipLevel('Board Member')) {
-//         $parent_keys_to_remove[] = $item->ID;
-//         unset($items[$key]);
-//       }
-//     }
-//   }
-
-//   // Remove child items if the parent "Members" has been removed
-//   foreach ($items as $key => $item) {
-//     // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
-//     if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
-//       unset($items[$key]);
-//     }
-//   }
-
-//   // Clear the array of keys to remove.
-//   $parent_keys_to_remove = [];
-
-//   // Check for "Members".
-//   foreach ($items as $key => $item) {
-//     if ($item->title === 'Members') {
-//       // Check if the user has the 'Member' level
-//       if (!pmpro_hasMembershipLevel('Member')) {
-//         // Add parent item key to remove its children later
-//         $parent_keys_to_remove[] = $item->ID;
-//         unset($items[$key]);
-//       }
-//     }
-//   }
-
-//   // Remove child items if the parent "Members" has been removed
-//   foreach ($items as $key => $item) {
-//     // Check if the item is a child of "Members" (i.e., check if its parent is in the removed list)
-//     if (in_array($item->menu_item_parent, $parent_keys_to_remove)) {
-//       unset($items[$key]);
-//     }
-//   }
-
-//   // Check for the public calendar and remove it if the user is a member.
-//   foreach ($items as $key => $item) {
-//     if ($item->title === 'Calendar' && empty( $item->menu_item_parent )) {
-//       // Check if the user has the 'Member' level
-//       if (pmpro_hasMembershipLevel('Member')) {
-//         unset($items[$key]);
-//       }
-//     }
-//   }
-
-//   return $items;
-// }
-// add_filter('wp_nav_menu_objects', 'restrict_menu_to_members', 10, 2);
+// Flush rewrite rules ONCE when switching themes
+function custom_rsvp_flush_rewrite() {
+  custom_rsvp_post_type(); // Ensure the CPT is registered first
+  flush_rewrite_rules();
+}
+add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
