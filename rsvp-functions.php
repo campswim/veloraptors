@@ -243,6 +243,10 @@ add_action( 'pre_get_posts', 'locate_event_date' );
 // Add the /RSVP/{event-title}/ path to the Members menu dropdown.
 function add_rsvp_submenu_link( $items, $args ) {
   global $wpdb;
+  global $rsvp_page_ids;
+  if ( !isset( $rsvp_page_ids ) ) {
+    $rsvp_page_ids = [];  // Initialize the array if not already set
+  }
 
   // Grab all custom posts of type "rsvp."
   $rsvp_posts = get_posts(array(
@@ -264,25 +268,25 @@ function add_rsvp_submenu_link( $items, $args ) {
       )
     );
 
-    if ( count( $extant_rsvps ) > 0 && isset( $args->menu ) && 'left-main-menu' === $args->menu && is_user_logged_in() ) {
+    if ( count( $extant_rsvps ) > 0 && isset( $args->menu ) && ( 'left-main-menu' === $args->menu || 'mobile-menu' === $args->menu ) && is_user_logged_in() ) {
       $dom = new DOMDocument();
       @$dom->loadHTML( '<?xml encoding="UTF-8">' . $items );
 
       $xpath = new DOMXPath( $dom );
-      $members_item = $xpath->query("//li[contains(@class, 'menu-item') and a[contains(text(), 'Members')]]")->item(0);
+      $members_item = $xpath->query("//li[contains(@class, 'menu-item') and span[contains(text(), 'For Members')]]")->item(0);
 
       if ( $members_item ) {
-        // Find or create the Members submenu.
+        // Find or create the For Members submenu.
         $members_submenu = $xpath->query("./ul[@class='sub-menu']", $members_item)->item(0);
         
         if ( !$members_submenu ) {
           $members_submenu = $dom->createElement('ul');
-          $members_submenu->setAttribute('class', 'sub-menu');
-          $members_submenu->setAttribute('style', 'margin-left: -7em;');
+          $members_submenu->setAttribute('class', 'sub-menu rsvp-sub-menu');
+          // $members_submenu->setAttribute('style', 'margin-left: -7em;');
           $members_item->appendChild($members_submenu);
         }
 
-        // Get the Calendar link from the Members link's submenu.
+        // Get the Calendar link from the For Members link's submenu.
         $calendar_item = $xpath->query(".//li[a[contains(text(), 'Calendar')]]", $members_submenu)->item(0);
 
         // Create RSVP menu item.
@@ -290,9 +294,8 @@ function add_rsvp_submenu_link( $items, $args ) {
         $rsvp_submenu->setAttribute('id', 'menu-item-rsvp');
         $rsvp_submenu->setAttribute('class', 'menu-item menu-item-has-children');
         
-        $rsvp_link = $dom->createElement('a', 'RSVPs');
+        $rsvp_link = $dom->createElement('span', 'RSVPs');
         $rsvp_link->setAttribute('class', 'gp-menu-link');
-        $rsvp_link->setAttribute('href', '#');
         $rsvp_submenu->appendChild($rsvp_link);
 
         $rsvp_link_dropdown_icon = $dom->createElement('span');
@@ -300,8 +303,8 @@ function add_rsvp_submenu_link( $items, $args ) {
         $rsvp_link->appendChild($rsvp_link_dropdown_icon);
 
         $rsvp_submenu_ul = $dom->createElement('ul');
-        $rsvp_submenu_ul->setAttribute('class', 'sub-menu');
-        $rsvp_submenu_ul->setAttribute( 'style', 'margin-left: -7em;' );
+        $rsvp_submenu_ul->setAttribute('class', 'sub-menu rsvp-sub-menu');
+        // $rsvp_submenu_ul->setAttribute( 'style', 'margin-left: -7em;' );
         
         $all_child_pages = get_posts( array( 
           'post_type'   => 'rsvp',
@@ -313,35 +316,26 @@ function add_rsvp_submenu_link( $items, $args ) {
         foreach ( $all_child_pages as $child_page ) {
           $event_title = $child_page->post_title;
           $event_url = get_permalink( $child_page->ID );
+          $rsvp_page_id = $child_page->post_name;
 
-          if ( !$child_page->post_parent ) { // Working with an event's main page, which will have children pages.
+          if ( !$child_page->post_parent ) { // Working with an event's main page.
             $event_li = $dom->createElement('li');
-            $event_li->setAttribute('class', 'menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children');
+            $event_li->setAttribute('class', 'menu-item menu-item-type-post_type menu-item-object-page');
             
             $event_link = $dom->createElement('a', $event_title);
             $event_link->setAttribute('class', 'gp-menu-link');
+            $event_link->setAttribute('id', $rsvp_page_id);
             $event_link->setAttribute('href', $event_url);
             $event_li->appendChild($event_link);
-
-            // $event_ul = $dom->createElement('ul');
-            // $event_ul->setAttribute('class', 'sub-menu');
-
             $event_items[$child_page->ID] = [
               'li' => $event_li,
-              // 'ul' => $event_ul
             ];
+
+            // Add the ID to the global array
+            if (!in_array($rsvp_page_id, $rsvp_page_ids)) {
+              $rsvp_page_ids[] = $rsvp_page_id; // Only add if it's not already in the array
+            }          
           }
-
-          // if ( isset($event_items[$child_page->post_parent]) ) {
-          //   error_log("Adding Date Page: $event_title under Event: " . $event_items[$child_page->post_parent]['li']->textContent);
-
-          //   $event_item = $dom->createElement('li');
-          //   $event_link = $dom->createElement('a', $event_title);
-          //   $event_link->setAttribute('href', $event_url);
-          //   $event_item->appendChild($event_link);
-
-          //   $event_items[$child_page->post_parent]['ul']->appendChild($event_item);
-          // }
         }
 
         foreach ($event_items as $event) {
@@ -368,6 +362,41 @@ function add_rsvp_submenu_link( $items, $args ) {
   return $items;
 }
 add_filter( 'wp_nav_menu_items', 'add_rsvp_submenu_link', 10, 2 );
+
+// Add a style tag to the head to manage styling of dynamic links.
+function add_style_tag_for_link() {
+  global $rsvp_page_ids;
+
+  echo "
+    <style>
+      @media screen and (min-width: 1024px) {
+        #menu-item-rsvp > .sub-menu.rsvp-sub-menu {
+          margin-left: -7em;
+        }
+      }
+    </style>
+  ";
+
+  if ( !empty( $rsvp_page_ids ) ) {
+    echo '<style>';
+    foreach( $rsvp_page_ids as $id ) {
+      echo "#$id { 
+        margin-left: 60px; 
+      }";
+    }
+    foreach( $rsvp_page_ids as $id ) {
+      echo "
+        @media screen and (min-width: 1024px) {
+          #$id { 
+            margin-left: 0;
+          }
+        }
+      ";
+    }
+    echo '</style>';
+  }
+}
+add_action('wp_footer', 'add_style_tag_for_link');
 
 // Scehdule a cron-job cleanup of old RSVP events.
 function schedule_rsvp_cleanup() {
@@ -724,95 +753,126 @@ function rsvp_dashboard_page() {
 
   // If the sort parameters are set, reload the page with the correct order.
   $current_url = admin_url('admin.php?page=rsvp-dashboard');
-  
+
+  // Get the state of the RSVP function, whether enabled or otherwise.
+  $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option is nothing is returned;
+
+  // Save the RSVP toggle state in the database.
+  if ( isset( $_POST['toggle_rsvp'] ) ) {
+    update_option( 'rsvp_enabled', $_POST['rsvp_enabled'] );
+    $rsvp_enabled = $_POST['rsvp_enabled'];
+  }
+
   ?>
-  <div class="wrap">
-    <h1>RSVP Dashboard</h1>
-    <table class="wp-list-table widefat fixed striped posts">
-      <thead>
-        <tr>
-          <th scope="col" class="manage-column">
-            <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'event_title', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
-              Event Title
-              <?php if ($sort_by === 'event_title') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
-            </a>
-          </th>
-          <th scope="col" class="manage-column">
-            <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'event_date', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
-              Event Date
-              <?php if ($sort_by === 'event_date') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
-            </a>
-          </th>
-          <th scope="col" class="manage-column">
-            <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'rsvp_count', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
-              RSVP Count
-              <?php if ($sort_by === 'rsvp_count') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
-            </a>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php
-        // Query the database for events stored in the wp_rsvps table.
-        $events = $wpdb->get_results("SELECT DISTINCT event_title, event_date FROM {$wpdb->prefix}rsvps");
+    <div class="wrap">
+      <h1>RSVP Dashboard</h1>
+      <table class="wp-list-table widefat fixed striped posts">
+        <thead>
+          <tr>
+            <th scope="col" class="manage-column">
+              <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'event_title', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
+                Event Title
+                <?php if ($sort_by === 'event_title') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
+              </a>
+            </th>
+            <th scope="col" class="manage-column">
+              <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'event_date', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
+                Event Date
+                <?php if ($sort_by === 'event_date') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
+              </a>
+            </th>
+            <th scope="col" class="manage-column">
+              <a href="<?php echo esc_url( add_query_arg( array( 'sort_by' => 'rsvp_count', 'sort_order' => $sort_order === 'asc' ? 'desc' : 'asc' ), $current_url ) ); ?>">
+                RSVP Count
+                <?php if ($sort_by === 'rsvp_count') { echo $sort_order === 'asc' ? '▲' : '▼'; } ?>
+              </a>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php
+          // Query the database for events stored in the wp_rsvps table.
+          $events = $wpdb->get_results("SELECT DISTINCT event_title, event_date FROM {$wpdb->prefix}rsvps");
 
-        // Sort the events array based on the selected sort column.
-        usort($events, function($a, $b) use ($sort_by, $sort_order, $wpdb) {
-          if ($sort_by === 'rsvp_count') {
-            // Query to get RSVP count for the specific events
-            $rsvp_a_count = $wpdb->get_var($wpdb->prepare(
-              "SELECT COUNT(*) FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
-              $a->event_title, $a->event_date
-            ));
-            $rsvp_b_count = $wpdb->get_var($wpdb->prepare(
-              "SELECT COUNT(*) FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
-              $b->event_title, $b->event_date
-            ));
+          // Sort the events array based on the selected sort column.
+          usort($events, function($a, $b) use ($sort_by, $sort_order, $wpdb) {
+            if ($sort_by === 'rsvp_count') {
+              // Query to get RSVP count for the specific events
+              $rsvp_a_count = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
+                $a->event_title, $a->event_date
+              ));
+              $rsvp_b_count = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
+                $b->event_title, $b->event_date
+              ));
 
-            return $sort_order === 'asc' ? $rsvp_a_count - $rsvp_b_count : $rsvp_b_count - $rsvp_a_count;
-          } elseif ($sort_by === 'event_date') {
-            // Sort by event_date, converting to a timestamp for comparison.
-            $a_timestamp = strtotime($a->event_date);
-            $b_timestamp = strtotime($b->event_date);
-            return $sort_order === 'asc' ? $a_timestamp - $b_timestamp : $b_timestamp - $a_timestamp;
+              return $sort_order === 'asc' ? $rsvp_a_count - $rsvp_b_count : $rsvp_b_count - $rsvp_a_count;
+            } elseif ($sort_by === 'event_date') {
+              // Sort by event_date, converting to a timestamp for comparison.
+              $a_timestamp = strtotime($a->event_date);
+              $b_timestamp = strtotime($b->event_date);
+              return $sort_order === 'asc' ? $a_timestamp - $b_timestamp : $b_timestamp - $a_timestamp;
+            } else {
+              return $sort_order === 'asc' ? strcmp($a->event_title, $b->event_title) : strcmp($b->event_title, $a->event_title);
+            }
+          });
+
+          if ($events) {
+            foreach ($events as $event) {
+              $event_title = $event->event_title;
+              $event_title_formatted = format_event_titles( $event_title );
+              $event_date = $event->event_date;
+              
+              // Query to get the RSVP data count for the specific event.
+              $rsvp_data = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
+                $event_title, $event_date
+              ));
+              $rsvp_count = count($rsvp_data);
+              ?>
+              <tr>
+                <td>
+                  <a href="<?php echo esc_url( add_query_arg( array( 'event_title' => $event_title, 'event_date' => $event_date ), admin_url('admin.php?page=rsvp-event') ) ); ?>">
+                    <?php echo esc_html($event_title_formatted); ?>
+                  </a>
+                </td>
+                <td><?php echo esc_html(date('F j, Y', strtotime($event_date))); ?></td>
+                <td><?php echo esc_html($rsvp_count); ?></td>
+              </tr>
+              <?php
+            }
           } else {
-            return $sort_order === 'asc' ? strcmp($a->event_title, $b->event_title) : strcmp($b->event_title, $a->event_title);
+            echo '<tr><td colspan="3">No events found.</td></tr>';
           }
-        });
-
-        if ($events) {
-          foreach ($events as $event) {
-            $event_title = $event->event_title;
-            $event_title_formatted = format_event_titles( $event_title );
-            $event_date = $event->event_date;
-            
-            // Query to get the RSVP data count for the specific event.
-            $rsvp_data = $wpdb->get_results($wpdb->prepare(
-              "SELECT * FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
-              $event_title, $event_date
-            ));
-            $rsvp_count = count($rsvp_data);
-            ?>
-            <tr>
-              <td>
-                <a href="<?php echo esc_url( add_query_arg( array( 'event_title' => $event_title, 'event_date' => $event_date ), admin_url('admin.php?page=rsvp-event') ) ); ?>">
-                  <?php echo esc_html($event_title_formatted); ?>
-                </a>
-              </td>
-              <td><?php echo esc_html(date('F j, Y', strtotime($event_date))); ?></td>
-              <td><?php echo esc_html($rsvp_count); ?></td>
-            </tr>
-            <?php
-          }
-        } else {
-          echo '<tr><td colspan="3">No events found.</td></tr>';
-        }
-        ?>
-      </tbody>
-    </table>
-  </div>
+          ?>
+        </tbody>
+      </table>
+      <div class="toggle-rsvp-form">
+        <form method="POST">
+          <input type="hidden" name="toggle_rsvp" value="1">
+          <input type="hidden" name="rsvp_enabled" value="<?php echo $rsvp_enabled === '1' ? '0' : '1'; ?>">
+          <button type="submit" class="button-primary toggle-rsvps" id="toggle-rsvp-button" value="<?php echo $rsvp_enabled ? '0' : '1'; ?>">
+            <?php echo $rsvp_enabled ? 'Disable RSVPs' : 'Enable RSVPs'; ?>
+          </button>
+          <label for="toggle-rsvp-button">When disabling the RSVP function, do not forget to remove mentions of the RSVP feature, located under each day of the "Our Weekly Rides" section of the "About Us" page and under each day's tab on the "Rides & Routes page.</label>
+        </form>
+      </div>
+    </div>
   <?php
 }
+
+// Pass RSVP enabled state variable to the front-end to be read by JS, specifically the addRSVPLink() function in custom.js.
+function pass_rsvp_enabled_to_frontend() {
+    // Retrieve the stored option (1 = enabled, 0 = disabled).
+    $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option is nothing is returned;
+    ?>
+    <script type="text/javascript">
+        const rsvpEnabled = <?php echo json_encode($rsvp_enabled === '1'); ?>;
+    </script>
+    <?php
+}
+add_action('wp_head', 'pass_rsvp_enabled_to_frontend');
 
 // Create the admin page for individual events.
 function rsvp_event_admin_page() {

@@ -106,13 +106,13 @@ function log_pmpro_update_order($order) {
 }
 add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
 
-// Add the link "Groups" to the right main menu when a user is logged in.
+// Add the link "Groups" to the right main menu when a user is logged in and has a current membership.
 function add_dynamic_menu_link($items, $args) {
-  if ($args->menu === 'right-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel()) {
+  if ( ( $args->menu === 'right-main-menu' || $args->menu === 'mobile-menu' ) && is_user_logged_in() && pmpro_hasMembershipLevel()) {
     $user = wp_get_current_user();
 
     $link = site_url('/members/' . $user->user_nicename . '/groups/');    
-    $html = '<li id="menu-item-custom-group" class="menu-item menu-item-type-custom menu-item-object-custom"><a class="gp-menu-link" href="' . $link . '">Groups</a></li>';
+    $html = '<li id="menu-item-custom-group" class="menu-item menu-item-type-custom menu-item-object-custom"><a class="gp-menu-link" href="' . $link . '">Your Groups</a></li>';
 
     // Find the position of the "Friends" link and add the new link after it
     $friends_position = strpos($items, 'Friends</a></li>');

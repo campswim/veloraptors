@@ -9,6 +9,8 @@ const getTodaysDate = () => {
 
 // Add RSVP links to all events in the Simple Calendar.
 const addRSVPLink = () => {
+  if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
+  
   // Add the RSVP link dynamically to the calendar.
   const currentCalendar = document.querySelector('.simcal-current');
   
