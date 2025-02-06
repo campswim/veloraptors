@@ -819,7 +819,7 @@ function rsvp_event_admin_page() {
   global $wpdb;
  
   $event_title = isset($_GET['event_title']) ? sanitize_text_field($_GET['event_title']) : '';
-  $event_title_formatted = format_event_titles( $event_title );
+  $event_title_formatted = format_event_titles($event_title);
   $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
 
   if (empty($event_title) || empty($event_date)) {
@@ -827,8 +827,12 @@ function rsvp_event_admin_page() {
     return;
   }
 
+  $order_by = isset($_GET['order_by']) ? sanitize_sql_orderby($_GET['order_by']) : 'name';
+  $order = (isset($_GET['order']) && $_GET['order'] === 'desc') ? 'DESC' : 'ASC';
+  $new_order = ($order === 'ASC') ? 'desc' : 'asc';
+
   $rsvp_data = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
+    "SELECT * FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s ORDER BY $order_by $order",
     $event_title, $event_date
   ));
 
@@ -837,9 +841,9 @@ function rsvp_event_admin_page() {
     return;
   }
 
-  // Nonce for security
   $nonce = wp_create_nonce('delete_rsvps_nonce');
-  
+  $base_url = admin_url('admin.php?page=rsvp-event&event_title=' . urlencode($event_title) . '&event_date=' . urlencode($event_date));
+
   ?>
     <div class="wrap">
       <h1>Event Details</h1>
@@ -850,12 +854,24 @@ function rsvp_event_admin_page() {
         <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
         <input type="hidden" name="event_title" value="<?php echo esc_attr($event_title); ?>">
         <input type="hidden" name="event_date" value="<?php echo esc_attr($event_date); ?>">
-        <table class="wp-list-table widefat fixed striped posts">
+        <table class="wp-list-table widefat striped posts">
           <thead>
             <tr>
-              <th scope="col" class="manage-column"><input type="checkbox" id="select-all"></th>
-              <th scope="col" class="manage-column">Name</th>
-              <th scope="col" class="manage-column">Email</th>
+              <th scope="col" class="manage-column">
+                <input type="checkbox" id="select-all">
+              </th>
+              <th scope="col" class="manage-column">
+                <a href="<?php echo esc_url($base_url . '&order_by=name&order=' . $new_order); ?>">
+                  Name
+                  <?php if ($order_by === 'name') { echo $new_order === 'asc' ? '▲' : '▼'; } ?>
+                </a>
+              </th>
+              <th scope="col" class="manage-column">
+                <a href="<?php echo esc_url($base_url . '&order_by=email&order=' . $new_order); ?>">
+                  Email
+                  <?php if ($order_by === 'email') { echo $new_order === 'asc' ? '▲' : '▼'; } ?>
+                </a>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -885,7 +901,7 @@ function rsvp_event_admin_page() {
 
 // Register the event page as a submenu item, without rendering the menu link.
 function rsvp_event_page() {
-  // Only trigger the admin page for event details when event_title is set
+  // Only trigger the admin page for event details when event_title is set.
   if ( isset( $_GET['event_title'] ) && isset( $_GET['event_date'] ) ) {
     add_submenu_page(
       null, // No parent menu (hidden)

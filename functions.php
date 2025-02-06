@@ -2,7 +2,7 @@
 // Import the code responsible for the RSVP feature.
 require_once get_stylesheet_directory() . '/rsvp-functions.php';
 
-// Enqueue the parent theme's stylesheet
+// Enqueue the parent theme's and child theme's stylesheets.
 function magzine_child_enqueue_styles() {
     wp_enqueue_style('magzine-style', get_template_directory_uri() . '/style.css');
     wp_enqueue_style('magzine-child-style', get_stylesheet_uri(), array('magzine-style'));
@@ -19,6 +19,12 @@ function enqueue_child_theme_scripts() {
   ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
+
+// Enqueue the child theme's stylesheet for the admin panel.
+function magzine_child_admin_styles() {
+  wp_enqueue_style('magzine-child-admin-style', get_stylesheet_directory_uri() . '/style-admin.css');
+}
+add_action('admin_enqueue_scripts', 'magzine_child_admin_styles');
 
 // Shortcode to output the site URL dynamically.
 function dynamic_home_url_shortcode() {  
