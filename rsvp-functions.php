@@ -15,6 +15,8 @@ function create_rsvp_table() {
     event_date DATE NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
+    member_status VARCHAR(255) NOT NULL,
+    email_hash CHAR(64) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   ) $charset_collate;";
 
@@ -71,9 +73,16 @@ function handle_rsvp_submission() {
   if ( isset( $_POST['submit_rsvp'] ) ) {
     global $wpdb;
 
+    $logged_in_boolean = is_user_logged_in();
+    $has_membership_boolean = pmpro_hasMembershipLevel();
+    $user = wp_get_current_user();
+    $membership_level = pmpro_getMembershipLevelForUser($user->ID);
+    $member_status = !$logged_in_boolean ? 'Non-member' : (!$has_membership_boolean ? 'Inactive Member' : $membership_level->name);
+
     // Sanitize the inputs.
     $name = sanitize_text_field( $_POST['rsvp_name'] );
     $email = sanitize_email( $_POST['rsvp_email'] );
+    $email_hashed = hash( 'sha256', strtolower( trim( $email ) ) );
     $event_title = sanitize_text_field( $_POST['event_title'] );
     $event_date = sanitize_text_field( $_POST['event_date'] );
 
@@ -92,13 +101,18 @@ function handle_rsvp_submission() {
         'event_date'  => $event_date,
         'name'        => $name,
         'email'       => $email,
+        'member_status' => $member_status,
+        'email_hash' => $email_hashed
       ) );
     }
 
+    $row_id = $wpdb->insert_id; // Returns the ID of the inserted row
+
     // After inserting the RSVP data
     $redirect_url = add_query_arg( array(
-      'event_title' => urlencode( $event_title ),
+      // 'event_title' => urlencode( $event_title ),
       'event_date'  => urlencode( $event_date ),
+      'row_id'     => urlencode( $row_id ),
     ), get_permalink() );
 
     // Reload the event's page on submission.
@@ -111,64 +125,36 @@ add_action( 'wp_head', 'handle_rsvp_submission' );
 // Set the localStorage item after the form submission and redirect, in order to capture RSVP info of public (non-logged-in) visitors.
 function add_rsvp_local_storage() {
   // Get the event title and date from the URL query.
-  $event_title = isset($_GET['event_title']) ? sanitize_text_field( $_GET['event_title'] ) : '';
+  // $event_title = isset($_GET['event_title']) ? sanitize_text_field( $_GET['event_title'] ) : '';
   $event_date = isset($_GET['event_date']) ? sanitize_text_field( $_GET['event_date'] ) : '';
+  $row_id = isset( $_GET['row_id'] ) ? sanitize_text_field( $_GET['row_id'] ) : '';
   ?>
     <script type="text/javascript">
-      const storageKey = '<?php echo esc_js( $event_title ); ?>';
-      let rsvpData = [];
+      const eventDate = <?php echo json_encode($event_date ?? ''); ?>;
+      const rowId = <?php echo json_encode($row_id ?? ''); ?>;
       
-      if (storageKey) {
+      if (eventDate.trim() !== '' && rowId.trim() !== '') {
         const extantRsvps = localStorage.getItem('rsvp');
+        const entry = { 'id': rowId, 'date': eventDate }
+        let rsvpData = [];
         
-        if (!extantRsvps) {
-          const entry = { 
-            [storageKey]: [
-              { '<?php echo esc_js( $event_date ); ?>': true }
-            ]
-          };
-          
-          rsvpData.push(entry);
-        } else {
-          const eventRsvps = JSON.parse(extantRsvps); // An array.
-
-          for (const rsvp of eventRsvps) {
-            const event = Object.keys(rsvp)[0];
-
-            if (event === '<?php echo esc_js( $event_title ); ?>') { // Repeated event.
-              const newEntry = { '<?php echo esc_js( $event_date ); ?>': true };
-
-              rsvp[event].push(newEntry);
-              break;
-            } else { // New event.
-              const newEntry = {
-                [storageKey]: [
-                  { '<?php echo esc_js( $event_date ); ?>': true }
-                ]
-              };
+        if (extantRsvps) rsvpData = JSON.parse(extantRsvps);
+        rsvpData.push(entry);
+        
+        // Save to localStorage.
+        if (rsvpData.length > 0) localStorage.setItem('rsvp', JSON.stringify(rsvpData));
               
-              eventRsvps.push(newEntry);
-              break;
-            }
-          }
-
-          rsvpData = eventRsvps;
-        }
+        // Remove query params from the URL without reloading.
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
       }
-      
-      // Save to localStorage.
-      if (rsvpData.length > 0) localStorage.setItem('rsvp', JSON.stringify(rsvpData));
-            
-      // Remove query params from the URL without reloading.
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
     </script>
   <?php
 }
 add_action( 'wp_footer', 'add_rsvp_local_storage' );
 
 // Clear local storage of RSVPs that have expired, i.e., the day after the event.
-function remove_rsvp_local_storage() {
+function remove_expired_rsvp_local_storage() {
   if ( !is_user_logged_in() ) : ?>
     <script>
       const rsvps = localStorage.getItem('rsvp');
@@ -177,32 +163,26 @@ function remove_rsvp_local_storage() {
       today.setHours(0, 0, 0, 0);
 
       if (rsvpsParsed && rsvpsParsed.length > 0) {
-        const updatedRsvps = rsvpsParsed.map(event => {
-          const eventName = Object.keys(event)[0];
-          const details = Object.values(event)[0]; // An array of date objects.
+        const updatedRsvps = rsvpsParsed.filter(value => {
+          const date = value.date;
+          const dateObject = new Date(date);
+          dateObject.setHours(0, 0, 0, 0);
 
-          // Filter out expired dates.
-          const updatedDetails = details.filter(dateObj => {
-            const date = Object.keys(dateObj)[0];
-            const dateObject = new Date(date);
-            dateObject.setHours(0, 0, 0, 0);
-
-            // Keep only valid (future) dates.
-            return dateObject >= today;
-          });
-
-          return updatedDetails.length > 0 ? { [eventName]: updatedDetails } : null;
-        }).filter(event => event !== null);
+          // Keep only valid (future) dates.
+          return dateObject >= today;
+        });
 
         localStorage.setItem('rsvp', JSON.stringify(updatedRsvps));
       }
-      
     </script>
   <?php endif;
 }
-add_action( 'wp_footer', 'remove_rsvp_local_storage');
+add_action( 'wp_footer', 'remove_expired_rsvp_local_storage');
 
 // Clear local storage of public RSVPs that are deleted by Admin.
+function remove_rsvp_local_storage_admin_deleted() {
+
+}
 
 // Add the RSVP URL's custom query variables to the query_vars array.
 function add_custom_rsvp_query_vars( $vars ) {
@@ -244,6 +224,7 @@ add_action( 'pre_get_posts', 'locate_event_date' );
 function add_rsvp_submenu_link( $items, $args ) {
   global $wpdb;
   global $rsvp_page_ids;
+
   if ( !isset( $rsvp_page_ids ) ) {
     $rsvp_page_ids = [];  // Initialize the array if not already set
   }
@@ -914,6 +895,7 @@ function rsvp_event_admin_page() {
         <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
         <input type="hidden" name="event_title" value="<?php echo esc_attr($event_title); ?>">
         <input type="hidden" name="event_date" value="<?php echo esc_attr($event_date); ?>">
+
         <table class="wp-list-table widefat striped posts">
           <thead>
             <tr>
@@ -976,7 +958,7 @@ function rsvp_event_page() {
 add_action( 'admin_menu', 'rsvp_event_page' );
 
 // Handle the deletion of RSVPs in the admin dashboard.
-function handle_delete_rsvps() {
+function handle_delete_rsvps_by_admin() {
   if (!current_user_can('manage_options')) {
     wp_die(__('Unauthorized request.'));
   }
@@ -990,20 +972,44 @@ function handle_delete_rsvps() {
   $event_title = isset($_POST['event_title']) ? sanitize_text_field($_POST['event_title']) : '';
   $event_date = isset($_POST['event_date']) ? sanitize_text_field($_POST['event_date']) : '';
 
-  if (isset($_POST['delete_all']) && $_POST['delete_all'] === "1") {
+  if ( isset( $_POST['delete_all'] ) && $_POST['delete_all'] === "1" ) {
     // Delete all RSVPs for this event.
     $wpdb->delete("{$wpdb->prefix}rsvps", ['event_title' => $event_title, 'event_date' => $event_date]);
-  } elseif (!empty($_POST['rsvp_ids'])) {
-    // Delete selected RSVPs
-    $rsvp_ids = array_map('intval', $_POST['rsvp_ids']);
-    $placeholders = implode(',', array_fill(0, count($rsvp_ids), '%d'));
-    $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}rsvps WHERE id IN ($placeholders)", $rsvp_ids));
+  } elseif ( !empty( $_POST['rsvp_ids'] ) ) {
+    $non_members = [];
+
+    // Get the IDs associated with the table rows of the RSVPs that the admin has deleted.
+    $rsvp_ids = array_map( 'intval', $_POST['rsvp_ids'] );
+
+    // Create a placeholder array to hold each rsvp ID in the query.
+    $placeholders = implode( ',', array_fill( 0, count( $rsvp_ids ), '%d' ) );
+
+    // Determine which IDs are associated with RSVPs made by non-members.
+    $query = $wpdb->prepare( "SELECT id, member_status FROM {$wpdb->prefix}rsvps WHERE id IN ($placeholders)", $rsvp_ids );
+    $member_status = $wpdb->get_results( $query );
+
+    if ( !empty( $member_status ) ) {
+      foreach( $member_status as $status ) {
+        if ( isset( $status->member_status ) && isset( $status->email_hash ) && $status->member_status === 'Non-member' ) {
+          $non_members[] = $status->email_hash;
+        }
+      }
+    }
+
+    error_log( 'the public users: ' . print_r( $non_members, true ) );
+    // Update the 'deleted_rsvp_users' option with the new list of deleted user hashes
+    update_option('deleted_rsvp_users', $non_members);
+
+    // Delete selected RSVPs.
+    $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}rsvps WHERE id IN ($placeholders)", $rsvp_ids ) );
   }
+
+  // Hook in the function to clear localStorage.
 
   wp_redirect(admin_url("admin.php?page=rsvp-event&event_title={$event_title}&event_date={$event_date}"));
   exit;
 }
-add_action('admin_post_delete_rsvps', 'handle_delete_rsvps');
+add_action('admin_post_delete_rsvps', 'handle_delete_rsvps_by_admin');
 
 // Handle the cancellation of an RSVP by a user.
 function handle_cancel_rsvp() {
@@ -1015,9 +1021,9 @@ function handle_cancel_rsvp() {
     wp_die(__('Invalid request.', 'textdomain'));
   }
 
-  $rsvp_id = intval($_GET['rsvp_id']);
-  if ( !wp_verify_nonce($_GET['_wpnonce'], 'cancel_rsvp_' . $rsvp_id) ) {
-    wp_die(__('Security check failed.', 'textdomain'));
+  $rsvp_id = intval( $_GET['rsvp_id'] );
+  if ( !wp_verify_nonce( $_GET['_wpnonce'], 'cancel_rsvp_' . $rsvp_id ) ) {
+    wp_die( __('Security check failed.', 'textdomain') );
   }
 
   global $wpdb;
