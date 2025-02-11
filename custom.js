@@ -240,6 +240,22 @@ const disableBoardMemberSelect = () => {
   if (pmproSelectButtonTwo) pmproSelectButtonTwo.innerHTML = '';
 }
 
+const truncateFaqs = () => {
+  const uri = window.location.pathname;
+  if (uri === '/faqs/') {
+    const textToTruncate = document.querySelectorAll('.gp-element-post-excerpt');
+    if (textToTruncate && textToTruncate.length) {
+      textToTruncate.forEach(text => {
+        const textContent = text.textContent;
+        let truncatedText = '';
+        if (textContent && textContent.includes('?')) truncatedText = textContent.split('?')[0] + '?';
+        else truncatedText = textContent.slice(0, 200) + '...';
+        text.innerText = truncatedText;
+      });
+    }
+  }
+}
+
 // Call JS functions only after the DOM has been loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLink();
@@ -248,4 +264,5 @@ document.addEventListener('DOMContentLoaded', () => {
   tabRedirectAndScrollSupppression();
   hidePopularTag();
   disableBoardMemberSelect();
+  truncateFaqs();
 });
