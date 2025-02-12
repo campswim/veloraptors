@@ -248,7 +248,7 @@ add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
 // Log all available PMPro hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'pmpro') !== false || strpos($hook_name, 'save') !== false) {
+//   if (strpos($hook_name, 'elementor') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
