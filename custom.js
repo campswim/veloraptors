@@ -256,7 +256,7 @@ const truncateFaqs = () => {
   }
 }
 
-// Call JS functions only after the DOM has been loaded.
+// Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLink();
   observeCurrentCalendarChanges();
@@ -265,4 +265,16 @@ document.addEventListener('DOMContentLoaded', () => {
   hidePopularTag();
   disableBoardMemberSelect();
   truncateFaqs();
+});
+
+// Overrie the scroll animation when there are only two rows in the Items block.
+jQuery(document).ready(function ($) {
+  // Override jQuery animate to block only scroll animations
+  var originalAnimate = $.fn.animate;
+  $.fn.animate = function (props, speed, easing, callback) {
+    if (props.scrollTop !== undefined) {
+      return this; // Block only scroll animations
+    }
+    return originalAnimate.apply(this, arguments);
+  };      
 });

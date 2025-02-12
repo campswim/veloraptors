@@ -241,14 +241,21 @@ function custom_rsvp_flush_rewrite() {
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
+
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
 //   echo '<pre>' . home_url() . '</pre>';
 // });
 
-// Log all available PMPro hooks.
+// // Log all available PMPro hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'elementor') !== false) {
+//   if (strpos($hook_name, 'ghostpool') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
+// });
+
+// // View the SQL.
+// add_filter( 'posts_request', function( $sql ) {
+//     error_log( 'SQL Query: ' . $sql );
+//     return $sql;
 // });
