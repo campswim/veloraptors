@@ -241,6 +241,40 @@ function custom_rsvp_flush_rewrite() {
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
+// Add 'archive-public' to the tax query to exclude posts with that tag.
+add_filter('ghostpool_items_query', function($query_args) {
+  if ( !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
+    $tax_query = $query_args['tax_query'] ?: [];
+
+    if ( count( $tax_query ) > 0 ) {
+      $tax_query[] = [
+        'taxonomy' => 'post_tag',
+        'field'    => 'slug',
+        'terms'    => ['archive-public'],
+        'operator' => 'NOT IN',
+      ];
+
+      $tax_query[] = [
+        'taxonomy' => 'post_tag',
+        'field'    => 'slug',
+        'terms'    => ['archive-private'],
+        'operator' => 'NOT IN',
+      ];
+
+      $tax_query['relation'] = 'AND';
+      $query_args['tax_query'] = $tax_query;
+    }
+  }
+  
+  return $query_args;
+});
+
+
+// // View the queries.
+// function exclude_archive_public_tag( $query ) {
+//   error_log('Query: ' . print_r($query, true));
+// }
+// add_action('pre_get_posts', 'exclude_archive_public_tag');
 
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
@@ -249,7 +283,7 @@ add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
 // // Log all available PMPro hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'ghostpool') !== false) {
+//   if (strpos($hook_name, 'ghostpool_items') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
