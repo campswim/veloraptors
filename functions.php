@@ -248,18 +248,19 @@ add_filter('ghostpool_items_query', function($query_args) {
 
     if ( count( $tax_query ) > 0 ) {
       $tax_query[] = [
-        'taxonomy' => 'post_tag',
+        'taxonomy' => 'category',
         'field'    => 'slug',
-        'terms'    => ['archive-public'],
+        'terms'    => ['archive'],
         'operator' => 'NOT IN',
+        'include_children' => false,
       ];
 
-      $tax_query[] = [
-        'taxonomy' => 'post_tag',
-        'field'    => 'slug',
-        'terms'    => ['archive-private'],
-        'operator' => 'NOT IN',
-      ];
+      // $tax_query[] = [
+      //   'taxonomy' => 'category',
+      //   'field'    => 'slug',
+      //   'terms'    => ['archive-private'],
+      //   'operator' => 'NOT IN',
+      // ];
 
       $tax_query['relation'] = 'AND';
       $query_args['tax_query'] = $tax_query;
@@ -268,7 +269,6 @@ add_filter('ghostpool_items_query', function($query_args) {
   
   return $query_args;
 });
-
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
@@ -288,8 +288,8 @@ add_filter('ghostpool_items_query', function($query_args) {
 //   }
 // });
 
-// // View the SQL.
-// add_filter( 'posts_request', function( $sql ) {
-//     error_log( 'SQL Query: ' . $sql );
-//     return $sql;
-// });
+// View the SQL.
+add_filter( 'posts_request', function( $sql ) {
+    error_log( 'SQL Query: ' . $sql );
+    return $sql;
+});

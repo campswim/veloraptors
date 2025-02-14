@@ -164,7 +164,7 @@ const increaseMaxWidth = () => {
     style.textContent = `
       @media all and (min-width: 1024px) {
         .elementor-section.elementor-section-boxed > .elementor-container {
-          max-width: 60% !important;
+          min-width: 60% !important;
         }
         .elementor-section.elementor-section-boxed > .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title {
           margin-top: 4rem;

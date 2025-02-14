@@ -13,7 +13,7 @@ Version:      1.0.0
 
 #liability_waiver {
   resize: none; /* Disable manual resizing */
-  width: 100%; /* Optional: adjust width to fit layout */
+  width: 100%; /* Adjust width to fit layout */
 }
 
 #vr-logo-container {
