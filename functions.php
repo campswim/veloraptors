@@ -288,8 +288,8 @@ add_filter('ghostpool_items_query', function($query_args) {
 //   }
 // });
 
-// View the SQL.
-add_filter( 'posts_request', function( $sql ) {
-    error_log( 'SQL Query: ' . $sql );
-    return $sql;
-});
+// // View the SQL.
+// add_filter( 'posts_request', function( $sql ) {
+//     error_log( 'SQL Query: ' . $sql );
+//     return $sql;
+// });

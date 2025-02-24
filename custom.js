@@ -231,13 +231,58 @@ const hidePopularTag = () => {
   }
 }
 
-// Disable the "Select" button for the Board Member level. (This occurs on two differenet pages.)
+// Disable the "Select" button for the Board Member level. (This occurs on two differenet pages, ergo two different removals.)
 const disableBoardMemberSelect = () => {
-  const pmproSelectButtonOne = document.querySelector('.pmpro_btn');
-  const pmproSelectButtonTwo = document.querySelector('.gp-level')?.lastChild;
+  const pmproLevelsTable = document.querySelector('.pmpro_levels_table');
+  if (pmproLevelsTable) {
+    const tableRows = pmproLevelsTable.querySelectorAll('tr');
+    if (tableRows) {
+      Object.values(tableRows).forEach(row => {
+        const membershipLevel = row.querySelectorAll('th');
+        if (membershipLevel) {
+          Object.values(membershipLevel).forEach(level => {
+            const text = level.textContent;
+            if (text === 'Board Member') {
+              const selectButton = row.querySelector('.pmpro_btn');
+
+              // Hide the board-member card.
+              row.classList.add('gp-level-name-is-board-member');
+
+              // Disable the select button.
+              if (selectButton) selectButton.href = '';
+            }
+          });
+        }
+      });
+    }
+  }
   
-  if (pmproSelectButtonOne) pmproSelectButtonOne.href = '';
-  if (pmproSelectButtonTwo) pmproSelectButtonTwo.innerHTML = '';
+  const pmproLevels = document.querySelectorAll('.gp-level');
+  if (pmproLevels) {
+    Object.values(pmproLevels).forEach(level => {
+      const children = level.childNodes;
+
+      if (children) {
+        children.forEach(child => {
+          if (child.className.includes('gp-level-name')) {
+            const text = child.textContent;
+            if (text === 'Board Member') {
+              const selectButton = level.querySelector('.gp-level-checkout-button');
+
+              // Hide the board-member card.
+              level.classList.add('gp-level-name-is-board-member');
+
+              // Disable the select button.
+              if (selectButton) {
+                const button = selectButton.querySelector('a');
+                button.href = '';
+              }
+            }
+          }
+        });
+      }
+    });
+  }
 }
 
 const truncateFaqs = () => {

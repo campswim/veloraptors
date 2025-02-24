@@ -54,6 +54,10 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
   display: none;
 }
 
+.gp-level-name-is-board-member {
+  display: none;
+}
+
 @media all and (min-width: 1024px) {
   .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
     display: inline-flex;
