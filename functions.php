@@ -53,28 +53,29 @@ if (!current_user_can('administrator')) {
 function update_order_status_to_pending($user_id, $order) {
   global $wpdb;
 
-  // Check if the payment method is 'check'
+  // Check if the payment method is 'check.'
   if ($order->payment_type === 'Check') {
-    // Update the status to 'pending' in the database
-    $wpdb->update(
-        "{$wpdb->prefix}pmpro_membership_orders", // Table name
-        array( 'status' => 'pending' ), // Data to update
-        array( 'id' => $order->id ), // Where clause
-        array( '%s' ), // Format for 'status'
-        array( '%d' )  // Format for 'id'
-    );
+    // Mark subscription as "review" instead of canceling it.
+    $order->updateStatus('pending');
 
-    // Remove the membership level so it's not active yet.
-    pmpro_cancelMembershipLevel($order->membership_id, $user_id);
+    // Set the user's membership status to 'inactive' (keeps subscription active)
+    $wpdb->update(
+      "{$wpdb->prefix}pmpro_memberships_users",
+      array('status' => 'review'),
+      array('user_id' => $user_id, 'membership_id' => $order->membership_id),
+      array('%s'),
+      array('%d', '%d')
+    );
   }
 }
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 
 // Activate or deactivate the membership based on the payment's status of "pending" or "success"; set the expiration date for one year.
 function log_pmpro_update_order($order) {
-  if ($order->gateway == 'check') {
+  if ($order->gateway === 'check') {
     if ($order->status === 'success') {
-      pmpro_changeMembershipLevel($order->membership_id, $order->user_id); // Activate the membership.
+      // Activate the membership.
+      pmpro_changeMembershipLevel($order->membership_id, $order->user_id); 
 
       // Get the expiration timestamp (one year from now)
       $expiration_timestamp = strtotime('+1 year'); // Get the Unix timestamp
@@ -83,11 +84,12 @@ function log_pmpro_update_order($order) {
       $expiration_timestamp = (int) $expiration_timestamp;
 
       // Format the expiration timestamp into MySQL-compatible datetime format
-      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp); // Force the timestamp to be treated as an integer
+      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp); // Force the timestamp to be treated as an integer.
       
-      update_user_meta($order->user_id, 'pmpro_membership_expires', $expiration_date); // Set the expiration date for the membership.
-
-      // Now update the user's membership enddate directly in the database
+      // Remove the user meta flag for pending check payment.
+      delete_user_meta($order->user_id, 'pmpro_pending_check_payment');
+      
+      // Now update the user's membership enddate directly in the database.
       global $wpdb;
 
       // Update the expiration date in the `pmpro_memberships_users` table
@@ -98,10 +100,7 @@ function log_pmpro_update_order($order) {
         array('%s'),                           // Format for the enddate (datetime)
         array('%d')                            // Format for the user_id
       );
-    } else if ($order->status === 'pending') {
-      // Remove the membership level so it's not active yet.
-      pmpro_cancelMembershipLevel($order->membership_id, $order->user_id);
-    }
+    } 
   }
 }
 add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
@@ -283,7 +282,7 @@ add_filter('ghostpool_items_query', function($query_args) {
 
 // // Log all available PMPro hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'ghostpool_items') !== false) {
+//   if (strpos($hook_name, 'pmpro') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
