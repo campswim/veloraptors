@@ -58,7 +58,7 @@ function update_order_status_to_pending($user_id, $order) {
     // Mark subscription as "review" instead of canceling it.
     $order->updateStatus('pending');
 
-    // Set the user's membership status to 'inactive' (keeps subscription active)
+    // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
     $wpdb->update(
       "{$wpdb->prefix}pmpro_memberships_users",
       array('status' => 'review'),
