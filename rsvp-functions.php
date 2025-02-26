@@ -701,9 +701,20 @@ function generate_rsvp_form( $event_title, $event_date ) {
     <h4>List of Attendees</h4>
     <ul class="rsvp-attendees-list-container">
       <?php if ( $rsvps ) : ?>
-        <?php foreach ( $rsvps as $rsvp ) : ?>
+        <?php foreach ( $rsvps as $rsvp ) : 
+          // Get the user's nicename, in order to create a link to their profile.
+          $nice_name = $wpdb->get_var( $wpdb->prepare(
+            "SELECT user_nicename FROM {$wpdb->prefix}users WHERE user_email = %s",
+            $rsvp->email
+          ));
+
+          // Create the URL to the user's profile.
+          $user_profile_url = home_url() . '/members/' . $nice_name . '/profile/';
+        ?>
           <li class="rsvp-attendees-list-item">
-            <?php echo esc_html( $rsvp->name ); ?>
+            <a href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
+              <?php echo esc_html( $rsvp->name ); ?>
+            </a>
             <?php if ( is_user_logged_in() && $rsvp->email === $user_email ) : ?>
               <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $rsvp->id ), 'cancel_rsvp_' . $rsvp->id ) ); ?>" class="cancel-rsvp">Cancel RSVP</a>
             <?php endif; ?>
@@ -867,7 +878,7 @@ function rsvp_dashboard_page() {
   <?php
 }
 
-// Pass RSVP enabled state variable to the front-end to be read by JS, specifically the addRSVPLink() function in custom.js.
+// Pass RSVP-enabled state variable to the front-end to be read by JS, specifically the addRSVPLink() function in custom.js.
 function pass_rsvp_enabled_to_frontend() {
     // Retrieve the stored option (1 = enabled, 0 = disabled).
     $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option is nothing is returned;
