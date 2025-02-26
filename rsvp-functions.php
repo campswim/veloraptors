@@ -680,7 +680,7 @@ function generate_rsvp_form( $event_title, $event_date ) {
   // If the email has already been used to register for the event, show a message and do not insert the RSVP form.
   if ( $user_rsvp_id ) {
     echo '<p>Thanks for signing up to attend this event. Should you have any questions, please <a href="/contact-us/">reach out</a>.</p>';
-    echo '<p>If you\'d like to cancel your RSVP, <a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $user_rsvp_id ), 'cancel_rsvp_' . $user_rsvp_id ) ) . '" class="cancel-rsvp">click here.</a></p>';
+    // echo '<p>If you\'d like to cancel your RSVP, <a href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $user_rsvp_id ), 'cancel_rsvp_' . $user_rsvp_id ) ) . '" class="cancel-rsvp">click here.</a></p>';
   } elseif ( $existing_rsvp > 0 ) {
     echo '<p>Thanks for signing up to attend this event.</p><p>Should you have any questions, please <a href="/contact-us/">reach out</a>.</p>';
   } else { ?>
@@ -699,29 +699,61 @@ function generate_rsvp_form( $event_title, $event_date ) {
   <?php }
   ?>
     <h4>List of Attendees</h4>
-    <ul class="rsvp-attendees-list-container">
       <?php if ( $rsvps ) : ?>
-        <?php foreach ( $rsvps as $rsvp ) : 
-          // Get the user's nicename, in order to create a link to their profile.
-          $nice_name = $wpdb->get_var( $wpdb->prepare(
-            "SELECT user_nicename FROM {$wpdb->prefix}users WHERE user_email = %s",
-            $rsvp->email
-          ));
+        <table class="rsvp-attendees-list-container">
+          <tbody>
+            <?php foreach ( $rsvps as $index => $rsvp ) : 
+              // Get the user's nicename, in order to create a link to their profile.
+              $query = "SELECT u.user_nicename, pm.membership_id, pm.status
+                FROM wp_users u
+                JOIN (
+                  SELECT user_id, membership_id, status
+                  FROM wp_pmpro_memberships_users
+                  WHERE user_id = (
+                    SELECT ID FROM wp_users WHERE user_email = %s
+                  )
+                  ORDER BY id DESC
+                  LIMIT 1
+                ) pm ON u.ID = pm.user_id
+                WHERE u.user_email = %s;
+              ";
 
-          // Create the URL to the user's profile.
-          $user_profile_url = home_url() . '/members/' . $nice_name . '/profile/';
-        ?>
-          <li class="rsvp-attendees-list-item">
-            <a href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
-              <?php echo esc_html( $rsvp->name ); ?>
-            </a>
-            <?php if ( is_user_logged_in() && $rsvp->email === $user_email ) : ?>
-              <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $rsvp->id ), 'cancel_rsvp_' . $rsvp->id ) ); ?>" class="cancel-rsvp">Cancel RSVP</a>
-            <?php endif; ?>
-          </li>
-        <?php endforeach; ?>
+              $query = $wpdb->prepare( $query, $rsvp->email, $rsvp->email );          
+
+              $user_status = $wpdb->get_row( $query );
+
+              error_log( 'User Status: ' . print_r( $user_status, true ) );
+
+              // Create the URL to the user's profile.
+              $user_profile_url = isset( $user_status->user_nicename ) ? home_url() . '/members/' . $user_status->user_nicename . '/profile/' : '';
+            ?>
+                <tr class="rsvp-attendees-list-item">
+                  <td><?php echo esc_html( $index + 1 ); ?></td>
+                  <?php if ( $user_profile_url ) : ?>
+                    <td class="rsvp-user-name-container">
+                      <a class="user-profile-anchor" href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
+                        <?php echo esc_html( $rsvp->name ); ?>
+                      </a>
+                  <?php else : ?>
+                    <td><?php echo esc_html( $rsvp->name ); ?>
+                  <?php endif; ?>
+                  <?php if ( is_user_logged_in() && $rsvp->email === $user_email ) : ?>
+                    <a class="cancel-rsvp-anchor" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $rsvp->id ), 'cancel_rsvp_' . $rsvp->id ) ); ?>" class="cancel-rsvp">Cancel RSVP</a></td>
+                  <?php else : ?>
+                    </td>
+                  <?php endif; ?>
+                  <?php if ( $user_status && isset( $user_status->status ) && $user_status->status === 'active' ) : ?>
+                    <td>Member</td>
+                  <?php else : ?>
+                    <td>Guest</td>
+                  <?php endif; ?>
+                </tr>
+              </li>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
       <?php else : ?>
-        <li class="rsvp-attendees-list-item">No RSVPs yet.</li>
+        <p class="rsvp-attendees-list-item">No RSVPs yet.</p>
       <?php endif; ?>
     </ul>
   <?php

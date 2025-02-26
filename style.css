@@ -58,6 +58,17 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
   display: none;
 }
 
+.rsvp-attendees-list-container {
+  /* border-collapse: collapse; */
+  border: 1px solid;
+}
+
+.rsvp-user-name-container {
+  display: flex;
+  justify-content: space-between;
+   border: 1px solid transparent;
+}
+
 @media all and (min-width: 1024px) {
   .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
     display: inline-flex;
