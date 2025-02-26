@@ -719,10 +719,7 @@ function generate_rsvp_form( $event_title, $event_date ) {
               ";
 
               $query = $wpdb->prepare( $query, $rsvp->email, $rsvp->email );          
-
               $user_status = $wpdb->get_row( $query );
-
-              error_log( 'User Status: ' . print_r( $user_status, true ) );
 
               // Create the URL to the user's profile.
               $user_profile_url = isset( $user_status->user_nicename ) ? home_url() . '/members/' . $user_status->user_nicename . '/profile/' : '';

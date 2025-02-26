@@ -59,14 +59,13 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
 }
 
 .rsvp-attendees-list-container {
-  /* border-collapse: collapse; */
   border: 1px solid;
 }
 
 .rsvp-user-name-container {
   display: flex;
   justify-content: space-between;
-   border: 1px solid transparent;
+  border: 1px solid transparent;
 }
 
 @media all and (min-width: 1024px) {
