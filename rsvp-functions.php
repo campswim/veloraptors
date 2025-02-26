@@ -908,7 +908,7 @@ function rsvp_event_admin_page() {
 
   $nonce = wp_create_nonce('delete_rsvps_nonce');
   $base_url = admin_url('admin.php?page=rsvp-event&event_title=' . urlencode($event_title) . '&event_date=' . urlencode($event_date));
-
+  
   ?>
     <div class="wrap">
       <h1>Event Details</h1>
@@ -941,12 +941,25 @@ function rsvp_event_admin_page() {
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($rsvp_data as $rsvp): ?>
+            <?php foreach ($rsvp_data as $rsvp) : 
+              // Get the user's nicename, in order to create a link to their profile.
+              $nice_name = $wpdb->get_var( $wpdb->prepare(
+                "SELECT user_nicename FROM {$wpdb->prefix}users WHERE user_email = %s",
+                $rsvp->email
+              ));
+
+              // Create the URL to the user's profile.
+              $user_profile_url = home_url() . '/members/' . $nice_name . '/profile/';
+            ?>
               <tr>
                 <td>
                   <input type="checkbox" name="rsvp_ids[]" value="<?php echo esc_attr($rsvp->id); ?>">
                 </td>
-                <td><?php echo esc_html($rsvp->name); ?></td>
+                <td>
+                  <a href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
+                    <?php echo esc_html( $rsvp->name ); ?>
+                  </a>
+                </td>                
                 <td><?php echo esc_html($rsvp->email); ?></td>
               </tr>
             <?php endforeach; ?>
@@ -966,7 +979,7 @@ function rsvp_event_admin_page() {
 }
 
 // Register the event page as a submenu item, without rendering the menu link.
-function rsvp_event_page() {
+function rsvp_event_page_registration() {
   // Only trigger the admin page for event details when event_title is set.
   if ( isset( $_GET['event_title'] ) && isset( $_GET['event_date'] ) ) {
     add_submenu_page(
@@ -979,7 +992,7 @@ function rsvp_event_page() {
     );
   }
 }
-add_action( 'admin_menu', 'rsvp_event_page' );
+add_action( 'admin_menu', 'rsvp_event_page_registration' );
 
 // Handle the deletion of RSVPs in the admin dashboard.
 function handle_delete_rsvps_by_admin() {
