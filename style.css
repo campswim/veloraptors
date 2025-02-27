@@ -76,7 +76,7 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
 .rsvp-form div {
   display: flex;
   flex-direction: column;
-  padding: 2rem 10rem;
+  padding: 1rem 10rem;
 }
 
 .rsvp-form div:last-child {

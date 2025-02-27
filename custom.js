@@ -329,7 +329,8 @@ if (typeof hideHeaderInModal === 'undefined') {
 
       if (headerToHide && headerToHide.length > 0) {
         headerToHide.forEach(header => {
-          header.style.visibility = 'hidden';
+          // header.style.visibility = 'hidden';
+          header.style.display = 'none';
         });
       }
     };
@@ -367,17 +368,15 @@ if (typeof hideHeaderInModal === 'undefined') {
 
 if (typeof repositionLoginButton === 'undefined') {
   var repositionLoginButton = () => {
-    const loginForm = document.querySelector('form[action*="wp-login.php"]');
-    
-    if (loginForm) {
-      const submitButton = document.querySelector('.gp-submit-button-wrapper .gp-submit-button');
+  // Get the button wrapper
+    const submitButtonWrapper = document.querySelector('.gp-submit-button-wrapper');
 
-      if (submitButton) {
-        loginForm.style.position = 'relative';
-        submitButton.style.position = 'absolute';
-        submitButton.style.top = '20rem';
-        submitButton.style.width = '20rem';
-      }
+    // Get the preceding sibling of the button wrapper
+    const precedingSibling = submitButtonWrapper.previousElementSibling;
+
+    // Insert the button wrapper above its preceding sibling
+    if (submitButtonWrapper && precedingSibling) {
+      precedingSibling.parentNode.insertBefore(submitButtonWrapper, precedingSibling);
     }
   }
 }
