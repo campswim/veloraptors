@@ -11,6 +11,7 @@ function create_rsvp_table() {
 
   $sql = "CREATE TABLE IF NOT EXISTS $table_name (
     id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT(20) UNSIGNED,
     event_title VARCHAR(255) NOT NULL,
     event_date DATE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -97,6 +98,7 @@ function handle_rsvp_submission() {
 
     if ( !$existing_rsvp ) {
       $wpdb->insert( $table_name, array(
+        'user_id'    => $user->ID,
         'event_title' => $event_title,
         'event_date'  => $event_date,
         'name'        => $name,
@@ -131,24 +133,26 @@ function add_rsvp_local_storage() {
   
   if ( !is_user_logged_in() ) { ?>
     <script type="text/javascript">
-      const eventTitle = <?php echo json_encode( $event_title ?? '' ); ?>;
-      const eventDate = <?php echo json_encode( $event_date ?? '' ); ?>;
-      const rowId = <?php echo json_encode( $row_id ?? '' ); ?>;
-      
-      if (eventTitle.trim() !== '' && eventDate.trim() !== '' && rowId.trim() !== '') {
-        const extantRsvps = localStorage.getItem('rsvp');
-        const entry = { 'id': rowId, 'event': eventTitle, 'date': eventDate }
-        let rsvpData = [];
+      if (typeof eventTitle === 'undefined') {
+        const eventTitle = <?php echo json_encode( $event_title ?? null ); ?>;      
+        const eventDate = <?php echo json_encode( $event_date ?? '' ); ?>;
+        const rowId = <?php echo json_encode( $row_id ?? '' ); ?>;
         
-        if (extantRsvps) rsvpData = JSON.parse(extantRsvps);
-        rsvpData.push(entry);
-        
-        // Save to localStorage.
-        if (rsvpData.length > 0) localStorage.setItem('rsvp', JSON.stringify(rsvpData));
-              
-        // Remove query params from the URL without reloading.
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+        if (eventTitle.trim() !== '' && eventDate.trim() !== '' && rowId.trim() !== '') {
+          const extantRsvps = localStorage.getItem('rsvp');
+          const entry = { 'id': rowId, 'event': eventTitle, 'date': eventDate }
+          let rsvpData = [];
+          
+          if (extantRsvps) rsvpData = JSON.parse(extantRsvps);
+          rsvpData.push(entry);
+          
+          // Save to localStorage.
+          if (rsvpData.length > 0) localStorage.setItem('rsvp', JSON.stringify(rsvpData));
+                
+          // Remove query params from the URL without reloading.
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
       }
     </script>
   <?php } 
@@ -159,22 +163,24 @@ add_action( 'wp_footer', 'add_rsvp_local_storage' );
 function remove_expired_rsvp_local_storage() {
   if ( !is_user_logged_in() ) : ?>
     <script>
-      const rsvps = localStorage.getItem('rsvp');
-      const rsvpsParsed = rsvps ? JSON.parse(rsvps) : null; // An array.
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (rsvpsParsed && rsvpsParsed.length > 0) {
-        const updatedRsvps = rsvpsParsed.filter(value => {
-          const date = value.date;
-          const dateObject = new Date(date);
-          dateObject.setHours(0, 0, 0, 0);
-
-          // Keep only valid (future) dates.
-          return dateObject >= today;
-        });
-
-        localStorage.setItem('rsvp', JSON.stringify(updatedRsvps));
+      if (typeof rsvps === 'undefined') {
+        const rsvps = localStorage.getItem('rsvp');
+        const rsvpsParsed = rsvps ? JSON.parse(rsvps) : null; // An array.
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+  
+        if (rsvpsParsed && rsvpsParsed.length > 0) {
+          const updatedRsvps = rsvpsParsed.filter(value => {
+            const date = value.date;
+            const dateObject = new Date(date);
+            dateObject.setHours(0, 0, 0, 0);
+  
+            // Keep only valid (future) dates.
+            return dateObject >= today;
+          });
+  
+          localStorage.setItem('rsvp', JSON.stringify(updatedRsvps));
+        }
       }
     </script>
   <?php endif;
@@ -256,13 +262,13 @@ function add_rsvp_submenu_link( $items, $args ) {
   }
 
   // Grab all custom posts of type "rsvp."
-  $rsvp_posts = get_posts(array(
+  $rsvp_posts = get_posts( array(
     'post_type'      => 'rsvp',
     'posts_per_page' => 1,
-  ));
+  ) );
 
   // Add the "RSVPs" link if there are any such pages.
-  if (!empty($rsvp_posts)) {
+  if (!empty( $rsvp_posts ) ) {
     $all_child_pages = [];
 
     // Check the DB for ANY extant AND future RSVPs, including today's date: if none, don't render the RSVP link.
@@ -289,7 +295,6 @@ function add_rsvp_submenu_link( $items, $args ) {
         if ( !$members_submenu ) {
           $members_submenu = $dom->createElement('ul');
           $members_submenu->setAttribute('class', 'sub-menu rsvp-sub-menu');
-          // $members_submenu->setAttribute('style', 'margin-left: -7em;');
           $members_item->appendChild($members_submenu);
         }
 
@@ -311,7 +316,6 @@ function add_rsvp_submenu_link( $items, $args ) {
 
         $rsvp_submenu_ul = $dom->createElement('ul');
         $rsvp_submenu_ul->setAttribute('class', 'sub-menu rsvp-sub-menu');
-        // $rsvp_submenu_ul->setAttribute( 'style', 'margin-left: -7em;' );
         
         $all_child_pages = get_posts( array( 
           'post_type'   => 'rsvp',
@@ -320,7 +324,7 @@ function add_rsvp_submenu_link( $items, $args ) {
 
         $event_items = [];
 
-        foreach ( $all_child_pages as $child_page ) {
+        foreach( $all_child_pages as $child_page ) {          
           $event_title = $child_page->post_title;
           $event_url = get_permalink( $child_page->ID );
           $rsvp_page_id = $child_page->post_name;
@@ -338,28 +342,27 @@ function add_rsvp_submenu_link( $items, $args ) {
               'li' => $event_li,
             ];
 
-            // Add the ID to the global array
-            if (!in_array($rsvp_page_id, $rsvp_page_ids)) {
+            // Add the ID to the global array.
+            if ( !in_array( $rsvp_page_id, $rsvp_page_ids ) ) {
               $rsvp_page_ids[] = $rsvp_page_id; // Only add if it's not already in the array
             }          
           }
         }
 
         foreach ($event_items as $event) {
-          // $event['li']->appendChild($event['ul']);
-          $rsvp_submenu_ul->appendChild($event['li']);
+          $rsvp_submenu_ul->appendChild( $event['li'] );
         }
 
         // Append RSVP submenu inside the Members submenu.
         $rsvp_submenu->appendChild($rsvp_submenu_ul);
         
         // Insert RSVP menu item **after** the Members Calendar item.
-          if ( $calendar_item && $calendar_item->parentNode ) {
-            $calendar_item->parentNode->insertBefore($rsvp_submenu, $calendar_item->nextSibling);
-          } else {
-            // Fallback: Append at the end if Calendar link isn't found.
-            $members_submenu->appendChild($rsvp_submenu);
-          }      
+        if ( $calendar_item && $calendar_item->parentNode ) {
+          $calendar_item->parentNode->insertBefore($rsvp_submenu, $calendar_item->nextSibling);
+        } else {
+          // Fallback: Append at the end if Calendar link isn't found.
+          $members_submenu->appendChild($rsvp_submenu);
+        }      
 
         $items = $dom->saveHTML();
       }
@@ -424,12 +427,8 @@ function cleanup_old_rsvps() {
   $today = date('Y-m-d');
 
   // Get all event titles and event dates that need to be reomved.
-  $event_rsvp_pages_to_remove = $wpdb->get_results(
-    $wpdb->prepare(
-      "SELECT DISTINCT event_title, event_date FROM $table_name WHERE event_date < %s",
-      $today
-    )
-  );
+  $query = $wpdb->prepare( "SELECT DISTINCT event_title, event_date FROM $table_name WHERE event_date < %s",  $today );
+  $event_rsvp_pages_to_remove = $wpdb->get_results( $query );
 
   if ( !empty( $event_rsvp_pages_to_remove ) ) {
     foreach( $event_rsvp_pages_to_remove as $event_rsvp ) {
@@ -535,11 +534,7 @@ function add_rsvp_links_to_event_page( $content ) {
   if ( is_singular('rsvp') ) { // Checks for custom post types.
     global $post;
 
-    // Check if this is an RSVP event page (i.e., it's a child of the RSVP parent).
-    $rsvp_parent = get_page_by_path( 'rsvp' );
-
-    if ( !$post->post_parent ) {
-
+    if ( !$post->post_parent ) { // It's an event page for listing the event's dates.
       // Get child RSVP date pages.
       $child_pages = get_pages( array(
         'child_of' => $post->ID,
@@ -550,9 +545,14 @@ function add_rsvp_links_to_event_page( $content ) {
       ) );
 
       if ( !empty( $child_pages ) ) {
-        $content .= '<h3 class="rsvp-header">RSVP Dates:</h3><ul class="rsvp-dates-list-container">';
-        foreach ( $child_pages as $child_page ) {          
-          $content .= '<li class="rsvp-dates-list-item"><a href="' . get_permalink( $child_page->ID ) . '">' . esc_html( $child_page->post_name ) . '</a></li>';
+        $content .= '<h3 class="rsvp-header">RSVP Dates</h3><ul class="rsvp-dates-list-container">';
+        foreach ( $child_pages as $child_page ) {
+          $post_name = $child_page->post_name;
+          $post_name_formatted = format_event_date_readable( $post_name );
+
+          error_log( 'post name: ' . $post_name_formatted );
+
+          $content .= '<li class="rsvp-dates-list-item"><a href="' . get_permalink( $child_page->ID ) . '">' . esc_html( $post_name_formatted ) . '</a></li>';
         }
         $content .= '</ul>';
       }
@@ -631,7 +631,7 @@ function generate_rsvp_form( $event_title, $event_date ) {
   $user_email = is_user_logged_in() ? esc_attr( $current_user->user_email ) : '';
   
   // Fetch existing RSVPs for the event.
-  $query_rsvps = "SELECT id, name, email FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s";
+  $query_rsvps = "SELECT id, user_id, name, email, member_status FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s";
   $rsvps = $wpdb->get_results( $wpdb->prepare( $query_rsvps, $event_title, $event_date ) );
 
   // Check if the user's email already exists for this event and date.
@@ -705,54 +705,47 @@ function generate_rsvp_form( $event_title, $event_date ) {
     </form>
   <?php } ?>
   <div class="rsvp-attendees-list-container">
-    <h4>List of Attendees</h4>
+    <h4>List of Attendees (<?php echo esc_html( count( $rsvps ) ); ?>)</h4>
     <?php if ( $rsvps ) : ?>
-      <table class="rsvp-attendees-list-container">
+      <table class="rsvp-attendees-list-table">
         <tbody>
           <?php foreach ( $rsvps as $index => $rsvp ) : 
-            // Get the user's nicename, in order to create a link to their profile.
-            $query = "SELECT u.user_nicename, pm.membership_id, pm.status
-              FROM wp_users u
-              JOIN (
-                SELECT user_id, membership_id, status
-                FROM wp_pmpro_memberships_users
-                WHERE user_id = (
-                  SELECT ID FROM wp_users WHERE user_email = %s
-                )
-                ORDER BY id DESC
-                LIMIT 1
-              ) pm ON u.ID = pm.user_id
-              WHERE u.user_email = %s;
-            ";
-
-            $query = $wpdb->prepare( $query, $rsvp->email, $rsvp->email );          
-            $user_status = $wpdb->get_row( $query );
+            $nicename = $wpdb->get_var( $wpdb->prepare( "SELECT user_nicename FROM $wpdb->users WHERE ID = %d", $rsvp->user_id ) );
+            $user_avatar = '';
 
             // Create the URL to the user's profile.
-            $user_profile_url = isset( $user_status->user_nicename ) ? home_url() . '/members/' . $user_status->user_nicename . '/profile/' : '';
+            $user_profile_url = $rsvp->member_status !== 'Non-member' ? home_url() . '/members/' . $nicename . '/profile/' : '';
+
+            // Get the user's avatar, if extant.
+            if ( function_exists( 'bp_core_fetch_avatar' ) ) {
+              $user_avatar = bp_core_fetch_avatar( array(
+                'item_id' => $rsvp->user_id,
+                'type'    => 'thumb',
+                'html'    => true
+              ) );
+            }
+
+            if ( empty( $user_avatar ) || strpos( $user_avatar, 'bp-avatar' ) !== false ) {
+              $user_avatar = '<img loading="lazy" src="' . home_url() . '/wp-content/themes/magzine-child/assets/guest-avatar.png" class="avatar avatar-90 photo" width="90" height="110" alt="Profile Photo" />';
+            }
           ?>
-              <tr class="rsvp-attendees-list-item">
-                <td><?php echo esc_html( $index + 1 ); ?></td>
-                <?php if ( $user_profile_url ) : ?>
-                  <td class="rsvp-user-name-container">
-                    <a class="user-profile-anchor" href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
-                      <?php echo esc_html( $rsvp->name ); ?>
-                    </a>
-                <?php else : ?>
-                  <td><?php echo esc_html( $rsvp->name ); ?>
-                <?php endif; ?>
-                <?php if ( is_user_logged_in() && $rsvp->email === $user_email ) : ?>
-                  <!-- <a class="cancel-rsvp-anchor" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $rsvp->id ), 'cancel_rsvp_' . $rsvp->id ) ); ?>" class="cancel-rsvp">Cancel</a></td> -->
-                <?php else : ?>
-                  </td>
-                <?php endif; ?>
-                <?php if ( $user_status && isset( $user_status->status ) && $user_status->status === 'active' ) : ?>
-                  <td>Member</td>
-                <?php else : ?>
-                  <td>Guest</td>
-                <?php endif; ?>
-              </tr>
-            </li>
+            <tr class="rsvp-attendees-list-item">
+              <td class="rsvp-avatar"><?php echo wp_kses_post( $user_avatar ); ?></td>
+              <?php if ( $user_profile_url ) : ?>
+                <td class="rsvp-user-name-container">
+                  <a class="user-profile-anchor" href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
+                    <?php echo esc_html( $rsvp->name ); ?>
+                  </a>
+              <?php else : ?>
+                <td><?php echo esc_html( $rsvp->name ); ?>
+              <?php endif; ?>
+              <?php if ( is_user_logged_in() && $rsvp->email === $user_email ) : ?>
+                <!-- <a class="cancel-rsvp-anchor" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=cancel_rsvp&rsvp_id=' . $rsvp->id ), 'cancel_rsvp_' . $rsvp->id ) ); ?>" class="cancel-rsvp">Cancel</a></td> -->
+              <?php else : ?>
+                </td>
+              <?php endif; ?>
+              <?php echo isset( $rsvp->member_status ) && ( $rsvp->member_status === 'Member' || $rsvp->member_status === 'Board Member' ) ? '<td>Member</td>' : '<td>Guest</td>'; ?>
+            </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
@@ -907,7 +900,7 @@ function rsvp_dashboard_page() {
           <button type="submit" class="button-primary toggle-rsvps" id="toggle-rsvp-button" value="<?php echo $rsvp_enabled ? '0' : '1'; ?>">
             <?php echo $rsvp_enabled ? 'Disable RSVPs' : 'Enable RSVPs'; ?>
           </button>
-          <label for="toggle-rsvp-button">When disabling the RSVP function, do not forget to remove mentions of the RSVP feature, located under each day of the "Our Weekly Rides" section of the "About Us" page and under each day's tab on the "Rides & Routes page.</label>
+          <label for="toggle-rsvp-button">When disabling the RSVP function, do not forget to remove mentions of the RSVP feature, located under each day of the "Our Weekly Rides" section of the "About Us" page and under each day's tab on the "Rides & Routes" page.</label>
         </form>
       </div>
     </div>
@@ -920,7 +913,9 @@ function pass_rsvp_enabled_to_frontend() {
     $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option if nothing is returned;
     ?>
     <script type="text/javascript">
-        const rsvpEnabled = <?php echo json_encode( $rsvp_enabled === '1' ); ?>;
+      if (typeof rsvpEnabled === 'undefined') {
+        var rsvpEnabled = <?php echo json_encode( $rsvp_enabled === '1' ); ?>;
+      }
     </script>
     <?php
 }
@@ -986,34 +981,19 @@ function rsvp_event_admin_page() {
                 </a>
               </th>
               <th scope="col" class="manage-column">
-                <a href="<?php echo esc_url($base_url . '&order_by=status&order=' . $new_order); ?>">
+                <a href="<?php echo esc_url($base_url . '&order_by=member_status&order=' . $new_order); ?>">
                   Status
-                  <?php if ($order_by === 'status') { echo $new_order === 'asc' ? '▲' : '▼'; } ?>
+                  <?php if ($order_by === 'member_status') { echo $new_order === 'asc' ? '▲' : '▼'; } ?>
                 </a>
               </th>
             </tr>
           </thead>
           <tbody>
             <?php foreach ($rsvp_data as $rsvp) : 
-              $query = "SELECT u.user_nicename, pm.membership_id, pm.status
-                FROM wp_users u
-                JOIN (
-                  SELECT user_id, membership_id, status
-                  FROM wp_pmpro_memberships_users
-                  WHERE user_id = (
-                    SELECT ID FROM wp_users WHERE user_email = %s
-                  )
-                  ORDER BY id DESC
-                  LIMIT 1
-                ) pm ON u.ID = pm.user_id
-                WHERE u.user_email = %s;
-              ";
-
-              $query = $wpdb->prepare( $query, $rsvp->email, $rsvp->email );          
-              $user_status = $wpdb->get_row( $query );
+              $nicename = $wpdb->get_var( $wpdb->prepare( "SELECT user_nicename FROM $wpdb->users WHERE ID = %d", $rsvp->user_id ) );
 
               // Create the URL to the user's profile.
-              $user_profile_url = isset( $user_status->user_nicename ) ? home_url() . '/members/' . $user_status->user_nicename . '/profile/' : '';
+              $user_profile_url = $rsvp->member_status !== 'Non-member' ? home_url() . '/members/' . $nicename . '/profile/' : '';
             ?>
               <tr>
                 <td>
@@ -1029,7 +1009,7 @@ function rsvp_event_admin_page() {
                   <?php endif; ?>
                 </td>                
                 <td><?php echo esc_html( $rsvp->email ); ?></td>
-                <td><?php echo $user_status && isset( $user_status->status ) && $user_status->status === 'active' ? 'Member' : 'Guest'; ?></td>
+                <td><?php echo isset( $rsvp->member_status ) && ( $rsvp->member_status === 'Member' || $rsvp->member_status === 'Board Member' ) ? 'Member' : 'Guest'; ?></td>
               </tr>
             <?php endforeach; ?>
           </tbody>

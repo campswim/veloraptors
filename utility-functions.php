@@ -11,3 +11,9 @@ function format_event_date( $date ) {
   $formattedDate = new DateTime( $date );
   return $formattedDate ? $formattedDate->format( 'j M Y' ) : $date;
 }
+
+// Format the event's date to be more readable.
+function format_event_date_readable( $date ) {
+  $formattedDate = date( 'j F Y', strtotime( $date ) );
+  return $formattedDate;
+}

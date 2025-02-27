@@ -11,14 +11,19 @@ add_action('wp_enqueue_scripts', 'magzine_child_enqueue_styles');
 
 // Enqueue the child theme's scripts.
 function enqueue_child_theme_scripts() {
-  wp_enqueue_script( 'custom-js', get_stylesheet_directory_uri() . '/custom.js', array('jquery'), '1.0', true );
+  if ( ! is_admin() ) {
+    wp_enqueue_script( 'custom-js', get_stylesheet_directory_uri() . '/custom.js', array('jquery'), '1.0', true );
 
-  // Pass the current URI to the script
-  wp_localize_script( 'custom-js', 'siteData', array(
-      'pageUri' => trim($_SERVER['REQUEST_URI'], '/')
-  ) );
+    // Pass the current URI to the script
+    wp_localize_script( 'custom-js', 'siteData', array(
+        'pageUri' => trim($_SERVER['REQUEST_URI'], '/')
+    ) );
+  }
+}
+add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
 
-  // Enqueue for the admin dashboard.
+// Enqueue the child theme's scripts for the admin dashboard.
+function enqueue_child_theme_admin_scripts() {
   if ( is_admin() ) {
     wp_enqueue_script('custom-admin-js', get_stylesheet_directory_uri() . '/custom-admin.js', array('jquery'), '1.0', true);
 
@@ -28,8 +33,7 @@ function enqueue_child_theme_scripts() {
     ));
   }
 }
-add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
-add_action('admin_enqueue_scripts', 'enqueue_child_theme_scripts');
+add_action('admin_enqueue_scripts', 'enqueue_child_theme_admin_scripts');
 
 // Enqueue the child theme's stylesheet for the admin panel.
 function magzine_child_admin_styles() {
