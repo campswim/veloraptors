@@ -372,7 +372,7 @@ if (typeof repositionLoginButton === 'undefined') {
     const submitButtonWrapper = document.querySelector('.gp-submit-button-wrapper');
 
     // Get the preceding sibling of the button wrapper
-    const precedingSibling = submitButtonWrapper.previousElementSibling;
+    const precedingSibling = submitButtonWrapper?.previousElementSibling;
 
     // Insert the button wrapper above its preceding sibling
     if (submitButtonWrapper && precedingSibling) {
