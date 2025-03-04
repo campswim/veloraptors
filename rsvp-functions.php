@@ -1162,3 +1162,25 @@ function handle_cancel_rsvp() {
   }
 }
 add_action('admin_post_cancel_rsvp', 'handle_cancel_rsvp');
+
+// Add a link to the word "calendar" on the about-us and rides-and-routes pages to redirect users to their respective calendars (public or members only).
+function custom_calendar_link( $content ) {
+  if ( is_page( 'about-us' ) || is_page( 'rides-routes' ) ) {
+    // Check if the user is logged in and has an active membership.
+    if ( function_exists( 'pmpro_hasMembershipLevel' ) ) {
+      $calendar_url = pmpro_hasMembershipLevel() ? '/calendar/events/' : '/calendar/events-public';
+    } else {
+      $calendar_url = '/calendar/events-public';
+    }
+
+    // Replace the specific phrase with a linked version.
+    $content = str_replace(
+      'RSVP on the calendar.',
+      'RSVP on the <a href="' . esc_url( $calendar_url ) . '">calendar</a>.',
+      $content
+    );
+  }
+
+  return $content;
+}
+add_filter('the_content', 'custom_calendar_link');
