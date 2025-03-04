@@ -410,8 +410,14 @@ add_action('wp_footer', 'add_style_tag_for_link');
 
 // Scehdule a cron-job cleanup of old RSVP events.
 function schedule_rsvp_cleanup() {
+  // Clean up the db and any associated pages.
   if ( !wp_next_scheduled( 'rsvp_cleanup_event' ) ) {
     wp_schedule_event( time(), 'daily', 'rsvp_cleanup_event' );
+  }
+
+  // Clean up any expired pages. (This one is a purposeful redundancy.)
+  if ( !wp_next_scheduled( 'rsvp_cleanup_page' ) ) {
+    wp_schedule_event( time(), 'daily', 'rsvp_cleanup_page' );
   }
 }
 add_action( 'wp', 'schedule_rsvp_cleanup' );
@@ -426,7 +432,7 @@ function cleanup_old_rsvps() {
   // Get today's date in YYYY-MM-DD format.
   $today = date('Y-m-d');
 
-  // Get all event titles and event dates that need to be reomved.
+  // Get all event titles and event dates that need to be removed.
   $query = $wpdb->prepare( "SELECT DISTINCT event_title, event_date FROM $table_name WHERE event_date < %s",  $today );
   $event_rsvp_pages_to_remove = $wpdb->get_results( $query );
 
@@ -456,8 +462,8 @@ function cleanup_old_rsvps() {
   $wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE event_date < %s", $today ) );
 
   // Trash all event pages for which there are no RSVPs in the DB.
-  if ( count( $event_titles) > 0 ) {
-    foreach( $event_titles as $event_title) {
+  if ( count( $event_titles ) > 0 ) {
+    foreach( $event_titles as $event_title ) {
       $event_page = get_posts( array(
         'name' => "rsvp/$event_title",
         'post_type'   => 'rsvp', // Custom post type 'rsvp'
@@ -469,6 +475,33 @@ function cleanup_old_rsvps() {
   }
 }
 add_action( 'rsvp_cleanup_event', 'cleanup_old_rsvps' );
+
+// Remove any expired RSVP pages.
+function cleanup_expired_rsvp_pages() {
+  // Get today's date in YYYY-MM-DD format.
+  $today = date('Y-m-d');
+  $rsvp_pages = get_posts( array( 
+    'post_type'   => 'rsvp',
+    'post_status' => 'publish',
+    'posts_per_page' => -1,   
+  ) );
+
+  foreach( $rsvp_pages as $page ) {
+
+    error_log( 'rsvp page: ' . print_r( $page, true ) );
+
+    $event_date = $page->guid ?? '';
+    $event_date = $event_date ? explode( '/', $event_date ) : [];
+    $event_date = count( $event_date ) > 5 ? $event_date[5] : '';
+
+    if ( $event_date ) {
+      if ( strtotime( $event_date ) < strtotime( $today ) ) {
+        wp_trash_post( $page->ID );
+      }
+    }
+  }
+}
+add_action( 'rsvp_cleanup_page', 'cleanup_expired_rsvp_pages' );
 
 // Remove event pages for which no dates have been RSVP'd yet.
 function remove_empty_event_pages() {
