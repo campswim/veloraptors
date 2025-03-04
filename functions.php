@@ -255,34 +255,104 @@ function custom_rsvp_flush_rewrite() {
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
-// Add 'archive-public' to the tax query to exclude posts with that tag.
-add_filter('ghostpool_items_query', function($query_args) {
+function customize_ghostpool_query( $args ) {
   if ( !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
-    $tax_query = $query_args['tax_query'] ?: [];
 
-    if ( count( $tax_query ) > 0 ) {
-      $tax_query[] = [
-        'taxonomy' => 'category',
-        'field'    => 'slug',
-        'terms'    => ['archive'],
-        'operator' => 'NOT IN',
-        'include_children' => false,
-      ];
-
-      // $tax_query[] = [
-      //   'taxonomy' => 'category',
-      //   'field'    => 'slug',
-      //   'terms'    => ['archive-private'],
-      //   'operator' => 'NOT IN',
-      // ];
-
-      $tax_query['relation'] = 'AND';
-      $query_args['tax_query'] = $tax_query;
+    // Ensure 'tax_query' exists.
+    if ( !isset( $args['tax_query'] ) ) {
+      $args['tax_query'] = [];
     }
+
+    // Store the original tax query.
+    $existing_tax_query = $args['tax_query'];
+
+    // Add the exclusion for the "archive" category
+    $archive_exclusion = [
+      'taxonomy'         => 'category',
+      'field'            => 'slug',
+      'terms'            => ['archive'],
+      'operator'         => 'NOT IN',
+      'include_children' => false,
+    ];
+
+    // Wrap everything in an AND relation
+    $args['tax_query'] = [
+      'relation' => 'AND',
+      [
+        ...$existing_tax_query,
+      ],
+      $archive_exclusion,
+    ];
   }
-  
-  return $query_args;
-});
+
+  return $args;
+}
+add_filter( 'ghostpool_items_query', 'customize_ghostpool_query' );
+
+/* Add SEO to public pages; noindex for members-only pages.*/
+// Define public pages by their slug
+function my_public_pages() {
+  return [
+    'archive-public',
+    'in-memorium',
+    'faqs',
+    'privacy-policy',
+    'rides-routes',
+    'about-us',
+    'contact-us',
+    'home'
+  ];
+}
+
+// Add SEO meta tags conditionally.
+function my_custom_seo_meta() {
+  // Exit if not a singular page or post.
+  if ( !is_singular() ) {
+    return;
+  }
+
+  // Get public pages array.
+  $public_pages = my_public_pages();
+
+  // Get the current page slug.
+  $current_slug = get_post_field( 'post_name', get_post() );
+
+  // Check if the current page is public.
+  $is_public = in_array( $current_slug, $public_pages );
+
+  // Add meta tags for public pages.
+  if ( $is_public ) {
+    echo '<meta name="description" content="' . esc_attr( get_the_excerpt() ) . '">' . "\n";
+    echo '<meta property="og:title" content="' . esc_attr( get_the_title() ) . '">' . "\n";
+    echo '<meta property="og:url" content="' . esc_url( get_permalink() ) . '">' . "\n";
+  } else {
+    // Add noindex for members-only or unknown pages
+    echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+  }
+}
+add_action( 'wp_head', 'my_custom_seo_meta' );
+
+// Add a link to the word "calendar" on the about-us page to redirect users to their respective calendars (public or members only).
+function custom_calendar_link( $content ) {
+  if ( is_page( 'about-us' ) ) {
+    // Check if the user is logged in and has an active membership.
+    if ( function_exists( 'pmpro_hasMembershipLevel' ) ) {
+      $calendar_url = pmpro_hasMembershipLevel() ? '/calendar/events/' : '/calendar/events-public';
+    } else {
+      $calendar_url = '/calendar/events-public';
+    }
+
+    // Replace the specific phrase with a linked version.
+    $content = str_replace(
+      'RSVP on the calendar.',
+      'RSVP on the <a href="' . esc_url( $calendar_url ) . '">calendar</a>.',
+      $content
+    );
+  }
+
+  return $content;
+}
+add_filter('the_content', 'custom_calendar_link');
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
@@ -292,7 +362,6 @@ add_filter('ghostpool_items_query', function($query_args) {
 
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
-//   echo '<pre>' . home_url() . '</pre>';
 // });
 
 // // Log all available PMPro hooks.

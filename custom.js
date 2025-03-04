@@ -317,6 +317,7 @@ if (typeof truncateFaqs === 'undefined') {
   }
 }
 
+// Hide the site's header in the login modal.
 if (typeof hideHeaderInModal === 'undefined') {
   var hideHeaderInModal = () => {
     const targetModal = document.querySelector('.gp-popup-box');
@@ -366,6 +367,7 @@ if (typeof hideHeaderInModal === 'undefined') {
   }
 }
 
+// Reposition the login button after a failed sign-in attempl.
 if (typeof repositionLoginButton === 'undefined') {
   var repositionLoginButton = () => {
   // Get the button wrapper
