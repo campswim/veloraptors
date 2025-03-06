@@ -332,6 +332,18 @@ function my_custom_seo_meta() {
 }
 add_action( 'wp_head', 'my_custom_seo_meta' );
 
+// Add instructions for paying via Zelle to the checkout page.
+function add_content_to_payment_information_fieldset( $content ) {
+    // Check if we are on the checkout page and if the fieldset is present.
+    if (is_page( 'membership-checkout' ) && strpos( $content, 'id="pmpro_payment_information_fields"' ) !== false) {
+
+      error_log( 'the content: ' . print_r( $content, true ) );
+
+    }
+    return $content;
+}
+add_filter('pmpro_checkout_fields', 'add_content_to_payment_information_fieldset');
+
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
 //   error_log('Query: ' . print_r($query, true));

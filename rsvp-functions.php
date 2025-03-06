@@ -487,9 +487,6 @@ function cleanup_expired_rsvp_pages() {
   ) );
 
   foreach( $rsvp_pages as $page ) {
-
-    error_log( 'rsvp page: ' . print_r( $page, true ) );
-
     $event_date = $page->guid ?? '';
     $event_date = $event_date ? explode( '/', $event_date ) : [];
     $event_date = count( $event_date ) > 5 ? $event_date[5] : '';
@@ -582,9 +579,6 @@ function add_rsvp_links_to_event_page( $content ) {
         foreach ( $child_pages as $child_page ) {
           $post_name = $child_page->post_name;
           $post_name_formatted = format_event_date_readable( $post_name );
-
-          error_log( 'post name: ' . $post_name_formatted );
-
           $content .= '<li class="rsvp-dates-list-item"><a href="' . get_permalink( $child_page->ID ) . '">' . esc_html( $post_name_formatted ) . '</a></li>';
         }
         $content .= '</ul>';
