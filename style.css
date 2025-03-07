@@ -141,13 +141,56 @@ table.rsvp-attendees-list-table td {
 }
 
 /* Fix the word "Password" on the modal that appears after a failed login attempt. (The word "Password" is otherwise oriented vertically.) */
-#pmpro_login .pmpro_login_wrap .pmpro_card_content #loginform p.login-password {
+#pmpro_login .pmpro_error + .pmpro_login_wrap .pmpro_card_content #loginform p.login-password {
   display: block;
 }
 
 /* Allows the overlay to be fix on scroll in mobile, too.*/
 .public-home-section-overlay > .elementor-background-overlay {
   background-attachment: fixed;
+}
+
+.payment-instructions {
+  line-height: 1.5rem;
+}
+.payment-instructions + ul li {
+  line-height: 1.5rem;
+}
+
+/* Payment options' tab styling */
+#pmpro_payment_information_fields .pmpro_card {
+  margin-top: .2rem;
+}
+.payment-tabs {
+    display: flex;
+}
+.payment-tabs button.tab-button {
+  padding: 10px 20px;
+  border-bottom: none;
+  background-color: rgb(255,255,255);
+  cursor: pointer;
+  border-radius: 10px 10px 0px 0px;
+  color: lightgray;
+  margin-right: .1rem;
+}
+.payment-tabs button.active {
+    border-bottom: none;
+    font-weight: bolder;
+    color: black;
+}
+#pmpro_payment_information_fields .pmpro_card.payment-option {
+    display: none;
+}
+#pmpro_payment_information_fields .pmpro_card.payment-option.active {
+    display: block;
+}
+#pmpro_payment_information_fields .pmpro-card.payment-option.zelle {
+  box-shadow: 0px 4px 34px 10px rgba(0, 0, 0, 0.1);
+}
+
+.pmpro_form_heading {
+  font-size: 24px;
+  margin: 0;
 }
 
 @media all and (min-width: 500px) {
@@ -158,6 +201,9 @@ table.rsvp-attendees-list-table td {
   .rsvp-avatar {
     border-right: 1px solid darkgray;
     width: 10%;
+  }
+    #pmpro_login .pmpro_login_wrap .pmpro_card_content #loginform p.login-password {
+    display: grid;
   }
 }
 

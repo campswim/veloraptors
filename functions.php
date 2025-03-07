@@ -332,17 +332,73 @@ function my_custom_seo_meta() {
 }
 add_action( 'wp_head', 'my_custom_seo_meta' );
 
-// Add instructions for paying via Zelle to the checkout page.
-function add_content_to_payment_information_fieldset( $content ) {
-    // Check if we are on the checkout page and if the fieldset is present.
-    if (is_page( 'membership-checkout' ) && strpos( $content, 'id="pmpro_payment_information_fields"' ) !== false) {
+function add_payment_option_tabs_before_payment() {
+  ?>
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        // Ensure the fieldset is loaded before applying changes.
+        if ($('#pmpro_payment_information_fields').length) {
+        // Create the tabs structure.
+        const tabsHtml = `
+            <div class="payment-tabs">
+                <button class="tab-button active" data-target="check">Pay by Check</button>
+                <button class="tab-button" data-target="zelle">Pay via Zelle</button>
+            </div>
+        `;
+        
+        // Insert the tabs above the pmpro_payment_information_fields fieldset.
+        $('#pmpro_payment_information_fields').prepend(tabsHtml);
 
-      error_log( 'the content: ' . print_r( $content, true ) );
+        const zellePaymentHtml = `
+          <div class="pmpro-card payment-option zelle">
+            <div class="pmpro_card_content">
+              <legend class="pmpro_form_legend">
+                <h2 class="pmpro_form_heading pmpro_font-large">Pay via Zelle</h2>
+              </legend>
+              <div class="pmpro_form_fields">
+                <div class="pmpro_form_field pmpro_zelle_instructions pmpro_checkout">
+                  <p>To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
+                  <p class="payment-instructions">If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.</p>
+                  <ul>
+                    <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
+                    <li><strong>NB:</strong> Please include your name in the payment's notes field.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
 
-    }
-    return $content;
+        // Add classes to the check-payment info card.
+        $('.pmpro_card').addClass('payment-option check active');
+
+        // Insert payment options HTML after the first payment option's div.
+        $('#pmpro_payment_information_fields .pmpro_card').after(zellePaymentHtml);
+
+        // Handle tab switching.
+        $('.tab-button').click(function(event) {
+          event.preventDefault();
+
+          // Get the clicked tab.
+          const target = $(this).data('target');
+          
+          // Remove active class from all tab buttons.
+          $('.tab-button').removeClass('active');
+
+          // Add active class to the clicked tab.
+          $(this).addClass('active');
+
+          // Hide all payment options.
+          $('.payment-option').removeClass('active');
+
+          // Show the corresponding payment option.
+          $('.' + target).addClass('active');                });
+        }
+      });
+    </script>
+    <?php
 }
-add_filter('pmpro_checkout_fields', 'add_content_to_payment_information_fieldset');
+add_action('wp_footer', 'add_payment_option_tabs_before_payment');
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
@@ -354,7 +410,7 @@ add_filter('pmpro_checkout_fields', 'add_content_to_payment_information_fieldset
 // add_action('wp_footer', function() {
 // });
 
-// // Log all available PMPro hooks.
+// // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
 //   if (strpos($hook_name, 'pmpro') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
