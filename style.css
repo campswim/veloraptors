@@ -145,19 +145,26 @@ table.rsvp-attendees-list-table td {
   display: block;
 }
 
+.pmpro_check_instructions p {
+  line-height: 1.5rem;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;  
+}
+
 /* Allows the overlay to be fix on scroll in mobile, too.*/
 .public-home-section-overlay > .elementor-background-overlay {
   background-attachment: fixed;
 }
 
-.payment-instructions {
+p.payment-instructions, .payment-instructions + ul li {
   line-height: 1.5rem;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;  
 }
-.payment-instructions + ul li {
-  line-height: 1.5rem;
-}
-
-/* Payment options' tab styling */
 #pmpro_payment_information_fields .pmpro_card {
   margin-top: .2rem;
 }

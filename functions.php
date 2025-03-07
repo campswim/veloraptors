@@ -350,14 +350,14 @@ function add_payment_option_tabs_before_payment() {
         $('#pmpro_payment_information_fields').prepend(tabsHtml);
 
         const zellePaymentHtml = `
-          <div class="pmpro-card payment-option zelle">
+          <div class="pmpro_card payment-option zelle">
             <div class="pmpro_card_content">
               <legend class="pmpro_form_legend">
                 <h2 class="pmpro_form_heading pmpro_font-large">Pay via Zelle</h2>
               </legend>
               <div class="pmpro_form_fields">
                 <div class="pmpro_form_field pmpro_zelle_instructions pmpro_checkout">
-                  <p>To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
+                  <p class="payment-instructions">To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
                   <p class="payment-instructions">If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.</p>
                   <ul>
                     <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
