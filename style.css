@@ -145,6 +145,15 @@ table.rsvp-attendees-list-table td {
   display: block;
 }
 
+.pmpro_form_fieldset {
+  max-width: 100%;
+}
+
+/* Workaround for overflowing fieldsets on checkout form. */
+.pmpro_form {
+  overflow: auto;
+}
+
 .pmpro_check_instructions p {
   line-height: 1.5rem;
   white-space: normal;

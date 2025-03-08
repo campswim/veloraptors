@@ -164,24 +164,6 @@ if (typeof observeCurrentCalendarChanges === 'undefined') {
   };
 }
 
-// Increase the max-width of the container when the page is full-roster: mostly deprecated.
-if (typeof increaseMaxWidth === 'undefined') {
-  var increaseMaxWidth = () => {
-    // Ensure the siteData variable exists.
-    if (typeof siteData !== 'undefined' && siteData.pageUri === 'full-roster') {
-      const style = document.createElement('style');
-      style.textContent = `
-        @media all and (min-width: 1024px) {
-          .elementor-section.elementor-section-boxed > .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title {
-            margin-top: 4rem;
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }
-}
-
 // Open tabs dynamically and disable the default scrolling to the hash.
 if (typeof tabRedirectAndScrollSupppression === 'undefined') {
   var tabRedirectAndScrollSupppression = () => {
@@ -387,7 +369,6 @@ if (typeof repositionLoginButton === 'undefined') {
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLink();
   observeCurrentCalendarChanges();
-  increaseMaxWidth();
   tabRedirectAndScrollSupppression();
   hidePopularTag();
   disableBoardMemberSelect();
@@ -396,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
   repositionLoginButton();
 });
 
-// Overrie the scroll animation when there are only two rows in the Items block.
+// Override the scroll animation when there are only two rows in the Items block.
 jQuery(document).ready(function ($) {
   // Override jQuery animate to block only scroll animations
   var originalAnimate = $.fn.animate;

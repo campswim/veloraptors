@@ -69,6 +69,55 @@ function rsvp_form_shortcode( $atts ) {
 }
 add_shortcode( 'rsvp_form', 'rsvp_form_shortcode' );
 
+// Run after deleting the RSVP page to flush the rewrite rules.
+function flush_rewrite_rules_after_deleting_rsvp() {
+  flush_rewrite_rules();
+}
+add_action( 'wp_trash_post', 'flush_rewrite_rules_after_deleting_rsvp' );
+
+// Add a custom post type for RSVP pages.
+function custom_rsvp_post_type() {
+  $labels = array(
+    'name'               => 'RSVP Pages',
+    'singular_name'      => 'RSVP Page',
+    'menu_name'          => 'RSVP Pages',
+    'name_admin_bar'     => 'RSVP Page',
+    'add_new'            => 'Add New',
+    'add_new_item'       => 'Add New RSVP Page',
+    'new_item'           => 'New RSVP Page',
+    'edit_item'          => 'Edit RSVP Page',
+    'view_item'          => 'View RSVP Page',
+    // 'all_items'          => 'All RSVP Pages',
+    'search_items'       => 'Search RSVP Pages',
+    'not_found'          => 'No RSVP pages found.',
+    'not_found_in_trash' => 'No RSVP pages found in Trash.'
+  );
+
+  $args = array(
+    'labels'             => $labels,
+    'public'             => true,
+    'has_archive'        => false,
+    'show_in_menu'       => true,
+    'menu_position'      => 20,
+    'menu_icon'          => 'dashicons-calendar-alt', // WordPress Dashicon for event-related icons
+    'supports'           => array('title', 'editor', 'custom-fields', 'thumbnail'),
+    // 'rewrite'            => array(
+    //   'slug' => 'rsvp', // Base slug for the custom post type
+    //   'with_front' => false, // Don't use the "front" part of the permalink
+    //   'hierarchical' => true, // Allow nested slugs like /rsvp/{event-title}/{event-date},
+    //   'ep_mask' => EP_PERMALINK,
+    // ),
+    // 'rewrite' => true,
+    'capability_type'    => 'post',
+    'hierarchical'       => true, // Important for nested pages
+    // 'publicly_queryable' => true,
+  );
+
+  register_post_type('rsvp', $args);
+  flush_rewrite_rules();
+}
+add_action('init', 'custom_rsvp_post_type');
+
 // Add the RSVP to the database and reload the page to show a confirmation message and a list of attendees.
 function handle_rsvp_submission() {
   if ( isset( $_POST['submit_rsvp'] ) ) {
