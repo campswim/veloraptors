@@ -976,7 +976,15 @@ function rsvp_dashboard_page() {
           <button type="submit" class="button-primary toggle-rsvps" id="toggle-rsvp-button" value="<?php echo $rsvp_enabled ? '0' : '1'; ?>">
             <?php echo $rsvp_enabled ? 'Disable RSVPs' : 'Enable RSVPs'; ?>
           </button>
-          <label for="toggle-rsvp-button">When disabling the RSVP function, do not forget to remove mentions of the RSVP feature, located under each day of the "Our Weekly Rides" section of the "About Us" page and under each day's tab on the "Rides & Routes" page.</label>
+          <?php if( $rsvp_enabled ) { ?>
+            <label for="toggle-rsvp-button">
+              When disabling the RSVP function, do not forget to remove mentions of the RSVP feature, located under "Our Weekly Rides" on the "About Us" page and under each day's tab on the "Rides & Routes" page.
+            </label>
+          <?php } else { ?>
+            <label for="toggle-rsvp-button">
+              When enabling the RSVP function, do not forget to add "RSVP on the calendar." in an Elementor text block under "Our Weekly Rides" on the "About Us" page and after the description under each day's tab on the "Rides & Routes" page, if you want links created dynamically to the appropriate calendar, whether public or members-only.
+            </label>
+            <?php } ?>
         </form>
       </div>
     </div>

@@ -28,7 +28,7 @@ if (typeof addRSVPLink === 'undefined') {
       let month = date.getMonth() + 1; // Add 1 to get a 1-based month
       const year = date.getFullYear();
       const eventDetails = document.querySelectorAll('.simcal-event-details');
-      let eventTitle = '', day = '';
+      let eventTitle = '', nodeTitle = '', day = '', dateFormatted = '', regex = '';
 
       // Add a click listener to all events.
       document.querySelectorAll('.simcal-events').forEach(element => {
@@ -41,51 +41,55 @@ if (typeof addRSVPLink === 'undefined') {
           if (eventTitle && day && (Number(todaysDay) <= Number(day) || Number(todaysMonth) < month)) {
             if (day.length === 1) day = `0${day}`;
             if (JSON.stringify(month).length === 1) month = `0${month}`;
-            eventTitle = eventTitle.split(' ').join('-').toLowerCase();
-
-            const dateFormatted = `${year}-${month}-${day}`;
-            const regex = /(^|\s)simcal-event-start-date(\s|$)/;
-
+            eventTitle = eventTitle.split(' ').join('-').toLowerCase();            
+            dateFormatted = `${year}-${month}-${day}`;
+            regex = /(^|\s)simcal-event-start-date(\s|$)/;
+            
             if (eventDetails) {
               eventDetails.forEach(event => {
                 let detailsDate = '';
+                nodeTitle = event?.children[0].innerText;
+                nodeTitle = nodeTitle ? nodeTitle.split(' ').join('-').toLowerCase() : '';
 
-                // Get the event detail's date for squaring with the chosen date.
-                event?.childNodes.forEach(node => {
-                  const childNodes = node?.childNodes;
-
-                  if (childNodes) {
-                    childNodes.forEach(childNode => {
-                      const classes = childNode?.className;
-
-                      if (classes && regex.test(classes)) {
-                        const attributes = childNode?.attributes;
-
-                        if (attributes) {
-                          Array.from(attributes).forEach(attribute => {
-                            if (attribute.name === 'content')
-                              detailsDate = attribute.textContent.split('T')[0];
-                          });
+                if (eventTitle === nodeTitle) {
+                  // Get the event detail's date for squaring with the chosen date.
+                  for (const node of event?.children) {
+                    const children = node?.children;
+  
+                    if (children) {
+                      for (const childNode of children) {
+                        const classes = childNode?.className;
+  
+                        if (classes && regex.test(classes)) {
+                          const attributes = childNode?.attributes;
+                                                    
+                          if (attributes) {                            
+                            Array.from(attributes).forEach(attribute => {
+                              if (attribute.name === 'content') {
+                                detailsDate = attribute.textContent.split('T')[0];
+                              }
+                            });
+                          }
                         }
                       }
-                    });
-                  }
-                });
+                    };
 
-                if (detailsDate === dateFormatted) {
-                  const descriptionElement = event;
-
-                  if (
-                    descriptionElement &&
-                    !descriptionElement.querySelector('.rsvp-link')
-                  ) {
-                    const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
-                    const rsvpUrl = window.location.origin + eventPath;
-                    const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
-                    const newChildNode = document.createElement('p');
-                    newChildNode.className = 'rsvp-link';
-                    newChildNode.innerHTML = htmlContent;
-                    descriptionElement.appendChild(newChildNode);
+                    if (detailsDate === dateFormatted) {    
+                      const descriptionElement = event;
+    
+                      if (
+                        descriptionElement &&
+                        !descriptionElement.querySelector('.rsvp-link')
+                      ) {
+                        const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
+                        const rsvpUrl = window.location.origin + eventPath;
+                        const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
+                        const newChildNode = document.createElement('p');
+                        newChildNode.className = 'rsvp-link';
+                        newChildNode.innerHTML = htmlContent;
+                        descriptionElement.appendChild(newChildNode);
+                      }
+                    }
                   }
                 }
               });
