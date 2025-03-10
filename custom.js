@@ -28,7 +28,7 @@ if (typeof addRSVPLink === 'undefined') {
       let month = date.getMonth() + 1; // Add 1 to get a 1-based month
       const year = date.getFullYear();
       const eventDetails = document.querySelectorAll('.simcal-event-details');
-      let eventTitle = '', nodeTitle = '', day = '', dateFormatted = '', regex = '';
+      let eventTitle = '', nodeTitle = '', day = '', dateFormatted = '', regexStartDate = '', regexEndDate = '';
 
       // Add a click listener to all events.
       document.querySelectorAll('.simcal-events').forEach(element => {
@@ -43,56 +43,68 @@ if (typeof addRSVPLink === 'undefined') {
             if (JSON.stringify(month).length === 1) month = `0${month}`;
             eventTitle = eventTitle.split(' ').join('-').toLowerCase();            
             dateFormatted = `${year}-${month}-${day}`;
-            regex = /(^|\s)simcal-event-start-date(\s|$)/;
+            regexStartDate = /(^|\s)simcal-event-start-date(\s|$)/;
+            regexEndDate = /(^|\s)simcal-event-end-date(\s|$)/;
             
             if (eventDetails) {
-              eventDetails.forEach(event => {
-                let detailsDate = '';
-                nodeTitle = event?.children[0].innerText;
-                nodeTitle = nodeTitle ? nodeTitle.split(' ').join('-').toLowerCase() : '';
+              for (const event of eventDetails) {
+                let eventStartDate = '', eventEndDate = '';
+                nodeTitle = event?.children[0]?.innerText?.split(' ').join('-').toLowerCase() || '';
+                
+                if (eventTitle === nodeTitle) {                  
 
-                if (eventTitle === nodeTitle) {
-                  // Get the event detail's date for squaring with the chosen date.
+                  console.log({ eventTitle, nodeTitle });
+
+                  // Get the event detail's dates for squaring with the chosen date.
                   for (const node of event?.children) {
                     const children = node?.children;
-  
+                  
                     if (children) {
                       for (const childNode of children) {
                         const classes = childNode?.className;
   
-                        if (classes && regex.test(classes)) {
+                        if (classes) {
                           const attributes = childNode?.attributes;
-                                                    
-                          if (attributes) {                            
-                            Array.from(attributes).forEach(attribute => {
-                              if (attribute.name === 'content') {
-                                detailsDate = attribute.textContent.split('T')[0];
-                              }
-                            });
+                        
+                          // Get the start date.
+                          if (regexStartDate.test(classes)) {
+                            eventStartDate = Array.from(attributes).find(attr => attr.name === 'content')?.textContent?.split('T')[0] || '';
                           }
-                        }
-                      }
-                    };
 
-                    if (detailsDate === dateFormatted) {    
+                          // Get the end date.
+                          if (regexEndDate.test(classes)) {
+                            eventEndDate = Array.from(attributes).find(attr => attr.name === 'content')?.textContent?.split('T')[0] || '';
+                          }       
+                        }               
+                      }
+                    }
+
+                    
+                    // If the selected date fits within the start and end dates, 
+                    if (eventStartDate && (dateFormatted === eventStartDate || (eventEndDate && dateFormatted <= eventEndDate))) {
+                      console.log({ dateFormatted, eventStartDate, eventEndDate });
+
                       const descriptionElement = event;
     
-                      if (
-                        descriptionElement &&
-                        !descriptionElement.querySelector('.rsvp-link')
+                      if (descriptionElement && !descriptionElement.querySelector('.rsvp-link')
                       ) {
-                        const eventPath = `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}`;
+                        // If the event spans multiple days there is an eventEndDate; if there is an event end-date, the day should be set to the event's start date.
+                        day = eventEndDate ? eventStartDate.split('-')[eventStartDate.split('-').length - 1] : day;
+                        endDay = eventEndDate ? eventEndDate.split('-')[eventEndDate.split('-').length - 1] : '';
+                        
+                        const eventPath = !eventEndDate ? `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}` : `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}|${eventEndDate}`;
                         const rsvpUrl = window.location.origin + eventPath;
                         const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
                         const newChildNode = document.createElement('p');
                         newChildNode.className = 'rsvp-link';
                         newChildNode.innerHTML = htmlContent;
                         descriptionElement.appendChild(newChildNode);
+                        break;
                       }
                     }
                   }
                 }
-              });
+              }
             }
           }
         });

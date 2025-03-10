@@ -348,7 +348,7 @@ function add_rsvp_submenu_link( $items, $args ) {
         }
 
         // Get the Calendar link from the For Members link's submenu.
-        $calendar_item = $xpath->query(".//li[a[contains(text(), 'Calendar')]]", $members_submenu)->item(0);
+        $calendar_item = $xpath->query(".//li[a[contains(text(), 'Photo Gallery')]]", $members_submenu)->item(0);
 
         // Create RSVP menu item.
         $rsvp_submenu = $dom->createElement('li');
@@ -658,15 +658,26 @@ function create_event_rsvp_page( $event_title, $event_date ) {
       'post_name'    => $event_title_slug,
       'post_status'  => 'publish',
       'post_type'    => 'rsvp',
-      'post_parent'  => $rsvp_page_id,
+      // 'post_parent'  => $rsvp_page_id,
     ));
   } else {
     $event_title_id = $event_title_page[0]->ID;
   }
 
   // Create the event date page.
-  $event_date_slug = sanitize_title( $event_date );
+  $event_end_date = strpos( $event_date, '|',  ) !== false ? explode( '|', $event_date )[1] : '';
+  $event_start_date = $event_end_date ? explode( '|', $event_date )[0] : $event_date;
+  $event_end_date_month = $event_end_date ? explode( '-', $event_end_date )[1] : '';
+  $event_start_date_month = $event_end_date_month ? explode( '-', $event_start_date )[1] : '';
+  $event_date_slug = sanitize_title( $event_start_date );
   $event_date_formatted = format_event_date( $event_date_slug );
+  $event_date_formatted = $event_end_date ? $event_date_formatted . ' to ' . format_event_date( $event_end_date ) : $event_date_formatted;
+  $pronoun = $event_end_date ? ' from ' : ' on ';
+
+  error_log( 'event end date: ' . $event_end_date );
+  error_log( 'event date formatted: ' . $event_date_formatted );
+
+
   $event_date_page = get_posts( array( 
     'name' => $event_date_slug,
     'post_type'   => 'rsvp',
@@ -684,8 +695,8 @@ function create_event_rsvp_page( $event_title, $event_date ) {
       'post_type'    => 'rsvp',
       'post_parent'  => $event_title_id,
       'post_content' => '
-        <div class="rsvp-form-container">
-          <h3 class="rsvp-page-title">RSVP for the "' . esc_html($event_title_formatted) . '" on ' . esc_html($event_date_formatted) . '</h3>
+        <div class="rsvp-page-container">
+          <h3 class="rsvp-page-title">RSVP for the "' . esc_html($event_title_formatted) . '" event' . $pronoun . esc_html($event_date_formatted) . '</h3>
           [rsvp_form event_title="' . esc_attr($event_title) . '" event_date="' . esc_attr($event_date) . '"]
         </div>
       ',    
@@ -706,6 +717,8 @@ function generate_rsvp_form( $event_title, $event_date ) {
   $user_name = is_user_logged_in() ? esc_attr( $current_user->display_name ) : '';
   $user_email = is_user_logged_in() ? esc_attr( $current_user->user_email ) : '';
   
+  // Remove the end date if it exists.
+  $event_date = strpos( $event_date, '|' ) !== false ? explode( '|', $event_date )[0] : $event_date;
   // Fetch existing RSVPs for the event.
   $query_rsvps = "SELECT id, user_id, name, email, member_status FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s";
   $rsvps = $wpdb->get_results( $wpdb->prepare( $query_rsvps, $event_title, $event_date ) );
@@ -841,7 +854,7 @@ function render_rsvp_confirmation( $content ) {
     if ( strpos( $content, 'rsvp-form' ) === false || strpos( $content, 'display: none;' ) !== false ) {
       // Replace "RSVP" with the past tense of the verb: "RSVP'd."
       if ( preg_match('/<h3[^>]*class=["\']rsvp-page-title["\']>\s*RSVP/iu', $content) ) {
-        $content = preg_replace('/(<h3[^>]*class=["\']rsvp-page-title["\'][^>]*>)\s*RSVP\b/iu', '$1You\'ve registered', $content);      
+        $content = preg_replace('/(<h3[^>]*class=["\']rsvp-page-title["\'][^>]*>)\s*RSVP\b/iu', '$1You\'ve registered', $content);
       }
     }
   }
@@ -1012,7 +1025,7 @@ function rsvp_event_admin_page() {
   $event_title = isset($_GET['event_title']) ? sanitize_text_field($_GET['event_title']) : '';
   $event_title_formatted = format_event_titles($event_title);
   $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
-
+  
   if (empty($event_title) || empty($event_date)) {
     echo '<p>No event specified.</p>';
     return;

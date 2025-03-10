@@ -351,7 +351,7 @@ function add_payment_option_tabs_before_payment() {
     </script>
     <?php
 }
-add_action('wp_footer', 'add_payment_option_tabs_before_payment');
+add_action('wp_head', 'add_payment_option_tabs_before_payment');
 
 // Because the visibilty toggle didn't work for the register-renew cards on the contact-us page, it has to be toggled here.
 function toggle_registration_card_on_contact_us() {
@@ -372,6 +372,30 @@ function toggle_registration_card_on_contact_us() {
   }
 }
 add_action( 'wp_head', 'toggle_registration_card_on_contact_us' );
+
+// Fix the style of the no-access page from pmpro.
+function style_membership_required_page() {
+  global $post;
+
+  // Check if the user has access to the current post/page
+  $has_access = pmpro_has_membership_access($post->ID);
+
+  if ( !$has_access ) {
+    echo '
+      <style>
+        .pmpro_card_actions {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .pmpro_card_actions > a {
+          max-width: 25rem;
+        }
+      </style>
+    ';
+  }
+}
+add_action('wp_head', 'style_membership_required_page');
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
