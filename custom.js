@@ -160,7 +160,7 @@ if (typeof correctCalNavButtons === 'undefined') {
   }
 }
 
-// Call add RSVPLink every time a user navigates between months to ensure that the right calendar is being referenced.
+// Call addRSVPLink every time a user navigates between months to ensure that the right calendar is being referenced.
 if (typeof observeCurrentCalendarChanges === 'undefined') {
   var observeCurrentCalendarChanges = () => {
     const targetNode = document.querySelector('.simcal-current');
@@ -180,7 +180,7 @@ if (typeof observeCurrentCalendarChanges === 'undefined') {
   };
 }
 
-// Open tabs dynamically and disable the default scrolling to the hash.
+// Open tabs on the Rides & Routes page dynamically on redirect from the About Us page and disable the default scrolling to the hash.
 if (typeof tabRedirectAndScrollSupppression === 'undefined') {
   var tabRedirectAndScrollSupppression = () => {
     jQuery(document).ready(function ($) {

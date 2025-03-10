@@ -11,46 +11,52 @@ Version:      1.0.0
 /* Import the parent theme's styles */
 @import url('../magzine/style.css');
 
+/* Liability waiver. */
 #liability_waiver {
   resize: none; /* Disable manual resizing */
   width: 100%; /* Adjust width to fit layout */
 }
 
+/* VeloRaptors Logo. */
 #vr-logo-container {
   padding: 0 1rem;
 }
 
-body.gp-level {
-  padding: 20px;
-}
-
+/* Text-area placeholder. */
 textarea::placeholder {
   color: white;
   font-weight: bold;
 }
-
 textarea:focus::placeholder {
   color: transparent;
 }
 
-/* Hide the board-member level selector*/
+/* GhostPool membership level. */
+body.gp-level {
+  padding: 20px;
+}
+
+/* Hide the board-member level selector. */
 .gp-level-2 {
   display: none;
 }
 
-body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-has-children > .sub-menu > .menu-item > a {
-  margin-left: 60px;
-}
-
+/* PMPro level group. */
 #pmpro_level_group-1 {
   display: none;
 }
 
-.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
+/* Menu link. */
+body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-has-children > .sub-menu > .menu-item > a {
+  margin-left: 60px;
+}
+
+/* Remove Elementor's image carousel's arrows in mobile. */
+.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
   display: none;
 }
 
-.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
+.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
   display: none;
 }
 
