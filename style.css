@@ -215,6 +215,11 @@ p.payment-instructions, .payment-instructions + ul li {
   margin: 0;
 }
 
+.bp-navs > .gp-main-nav-outer > .gp-main-nav-inner > .gp-main-nav-buttons.action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media all and (min-width: 500px) {
   table.rsvp-attendees-list-table td {
     font-size: 1rem;
@@ -236,12 +241,17 @@ p.payment-instructions, .payment-instructions + ul li {
 }
 
 @media all and (min-width: 1024px) {
-  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
+  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
     display: inline-flex;
   }
 
-  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-pointer-events.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
+  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
     display: inline-flex;
+  }
+
+  .bp-navs > .gp-main-nav-outer > .gp-main-nav-inner {
+    display: flex;
+    justify-content: space-between;
   }
 }
 
