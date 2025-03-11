@@ -215,11 +215,6 @@ p.payment-instructions, .payment-instructions + ul li {
   justify-content: flex-end;
 }
 
-/* Workaround for overflowing fieldsets on checkout form. Turned off for desktop to allow the box shadowing to work correctly. */
-/* .pmpro_form {
-    overflow: auto;
-  } */
-
 /* Ensure text inputs inside the fieldset have don't overflow their container. */
 .pmpro_form_input-text {
   width: 100%;
@@ -258,11 +253,6 @@ p.payment-instructions, .payment-instructions + ul li {
     display: flex;
     justify-content: space-between;
   }
-
-  /* Workaround for overflowing fieldsets on checkout form. */
-  /* .pmpro_form {
-    overflow: initial;
-  } */
 }
 
 @media all and (max-width: 1023px) and (orientation: landscape) {
