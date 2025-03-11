@@ -155,11 +155,12 @@ table.rsvp-attendees-list-table td {
   max-width: 100%;
 }
 
-/* Workaround for overflowing fieldsets on checkout form. */
-.pmpro_form {
-  overflow: auto;
+/* Allows the overlay to be fixed on scroll in mobile, too.*/
+.public-home-section-overlay > .elementor-background-overlay {
+  background-attachment: fixed;
 }
 
+/* PMPro check and zelle payment instructions.*/
 .pmpro_check_instructions p {
   line-height: 1.5rem;
   white-space: normal;
@@ -167,12 +168,6 @@ table.rsvp-attendees-list-table td {
   overflow-wrap: normal;
   hyphens: none;  
 }
-
-/* Allows the overlay to be fix on scroll in mobile, too.*/
-.public-home-section-overlay > .elementor-background-overlay {
-  background-attachment: fixed;
-}
-
 p.payment-instructions, .payment-instructions + ul li {
   line-height: 1.5rem;
   white-space: normal;
@@ -220,6 +215,16 @@ p.payment-instructions, .payment-instructions + ul li {
   justify-content: flex-end;
 }
 
+/* Workaround for overflowing fieldsets on checkout form. Turned off for desktop to allow the box shadowing to work correctly. */
+/* .pmpro_form {
+    overflow: auto;
+  } */
+
+/* Ensure text inputs inside the fieldset have don't overflow their container. */
+.pmpro_form_input-text {
+  width: 100%;
+}
+
 @media all and (min-width: 500px) {
   table.rsvp-attendees-list-table td {
     font-size: 1rem;
@@ -253,6 +258,11 @@ p.payment-instructions, .payment-instructions + ul li {
     display: flex;
     justify-content: space-between;
   }
+
+  /* Workaround for overflowing fieldsets on checkout form. */
+  /* .pmpro_form {
+    overflow: initial;
+  } */
 }
 
 @media all and (max-width: 1023px) and (orientation: landscape) {

@@ -381,6 +381,18 @@ if (typeof repositionLoginButton === 'undefined') {
   }
 }
 
+// Fix the value of the login_member_redirect hidden input field on the login form.
+if (typeof fixLoginMemberRedirect === 'undefined') {
+  var fixLoginMemberRedirect = () => {
+    const redirectField = document.querySelector('input[name="login_member_redirect"]');
+    
+    if (redirectField) {
+      const url = window.location.origin;
+      redirectField.value = url;
+    }
+  }
+}
+
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLink();
@@ -391,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
   truncateFaqs();
   hideHeaderInModal();
   repositionLoginButton();
+  fixLoginMemberRedirect();
 });
 
 // Override the scroll animation when there are only two rows in the Items block.

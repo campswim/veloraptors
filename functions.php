@@ -167,21 +167,21 @@ function custom_logout_redirect() {
 add_action('wp_logout', 'custom_logout_redirect');
 
 // Correct GhostPool's "login_member_redirect" key to redirect to the homepage. (It incorrectly adds the home url twice in login-form.php. It could be updated there, but this is a more general solution that should work even after an update.)
-add_action('init', function () {
-  // Check if we're handling a form submission with the problematic key
+add_action( 'init', function () {
+  // Check if we're handling a form submission with the problematic key.
   if (
-      isset($_POST['action']) &&
+      isset( $_POST['action'] ) &&
       $_POST['action'] === 'form_processing' &&
-      isset($_POST['login_member_redirect'])
+      isset( $_POST['login_member_redirect'] )
   ) {
       // Fix the redirect URL
       $_POST['login_member_redirect'] = home_url();
   }
 });
-add_filter('logout_redirect', function ($redirect_to, $requested_redirect_to, $user) {
+add_filter( 'logout_redirect', function ($redirect_to, $requested_redirect_to, $user) {
   // Ensure the redirect URL is valid.
-  if (empty($redirect_to) || !is_string($redirect_to)) {
-    return home_url(); // Default to home URL if invalid
+  if ( empty($redirect_to) || !is_string($redirect_to) ) {
+    return home_url(); // Default to home URL if invalid.
   }
   return $redirect_to;
 }, 10, 3);
@@ -426,7 +426,7 @@ add_action( 'wp_head', 'fix_header_spacing' );
 
 // // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'pmpro') !== false) {
+//   if (strpos($hook_name, 'ghostpool') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
