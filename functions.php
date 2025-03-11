@@ -395,7 +395,23 @@ function style_membership_required_page() {
     ';
   }
 }
-add_action('wp_head', 'style_membership_required_page');
+add_action( 'wp_head', 'style_membership_required_page' );
+
+// Fix the header spacing on the /groups/{group}/ page.
+function fix_header_spacing() {
+  if ( preg_match( '#^/groups/([^/]+)/?$#', $_SERVER['REQUEST_URI'] ) ) {
+    echo '
+      <style>
+        @media all and (width >= 1024px) {
+          .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title > .gp-post-title {
+            padding-top: 5rem;
+          }
+        }
+      </style>
+    ';
+  }
+}
+add_action( 'wp_head', 'fix_header_spacing' );
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
