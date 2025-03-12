@@ -122,7 +122,7 @@ add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
 
 // Add the link "Groups" to the right main menu when a user is logged in and has a current membership.
 function add_dynamic_menu_link($items, $args) {
-  if ( ( $args->menu === 'right-main-menu' || $args->menu === 'mobile-menu' ) && is_user_logged_in() && pmpro_hasMembershipLevel()) {
+  if ( ( $args->menu === 'right-main-menu' || $args->menu === 'mobile-menu' ) && is_user_logged_in() && pmpro_hasMembershipLevel() ) {
     $user = wp_get_current_user();
 
     $link = site_url('/members/' . $user->user_nicename . '/groups/');    
@@ -188,13 +188,33 @@ add_filter( 'logout_redirect', function ($redirect_to, $requested_redirect_to, $
 
 // Revise the registration confirmation message.
 function custom_pmpro_confirmation_message($message, $invoice) {
-  if (strpos($message, 'payment') !== false) {
-    $replace_with = '<p>Thank you for your application to join the VeloRaptors Cycling Club. Your membership will be activated once it has been approved and your payment processed.</p>';
-  } elseif (strpos($message, 'active') !== false) {
-    $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome to the club!</p>';
+  if ( is_user_logged_in() ) {    
+    if ( !pmpro_hasMembershipLevel() ) {
+      if ( strpos( $message, 'payment' ) !== false ) {
+        $replace_with = '
+          <p>
+            Thank you for your application to join the VeloRaptors Cycling Club. Your membership will be activated once it has been approved and your payment processed.
+          </p>
+          <p>
+            At that time, your login credentials will grant you access to all of the members-only features and content of our site, including:
+          </p>
+          <p>
+            <ul>
+              <li>Upload a profile picture.</li>
+              <li>Join groups and view other members\' profiles.</li>
+              <li>Make and message friends.</li>
+              <li>Make and manage your RSVPs.</li>
+            </ul>
+          </p>';
+      } 
+    } else {
+      if ( strpos($message, 'active') !== false ) {
+        $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome to the club!</p>';
+      }
+    }
   }
   
-  $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
+  $message = $message ? preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1) : $message;
   return $message;
 }
 add_filter('pmpro_confirmation_message', 'custom_pmpro_confirmation_message', 10, 2);
@@ -284,7 +304,7 @@ function my_custom_seo_meta() {
 }
 add_action( 'wp_head', 'my_custom_seo_meta' );
 
-// Add the Zelle payment option.
+// Add the Zelle payment-option instructions to the checkout page.
 function add_payment_option_tabs_before_payment() {
   ?>
     <script type="text/javascript">
@@ -329,7 +349,7 @@ function add_payment_option_tabs_before_payment() {
         $('#pmpro_payment_information_fields .pmpro_card').after(zellePaymentHtml);
 
         // Handle tab switching.
-        $('.tab-button').click(function(event) {
+        $('.tab-button').click(event => {
           event.preventDefault();
 
           // Get the clicked tab.
@@ -352,6 +372,43 @@ function add_payment_option_tabs_before_payment() {
     <?php
 }
 add_action('wp_head', 'add_payment_option_tabs_before_payment');
+
+// Add the Zelle payment-option instructions to the application-confirmation page (path: /membership-confirmation/).
+function add_payment_option_instructions_after_submission() {
+  if ( is_page( 'membership-confirmation' ) ) { ?>
+    <script type="text/javascript">
+      jQuery(document).ready($ => {
+        if ($('#pmpro_order_single-instructions').length) {
+          const html = `
+            <div class="pmpro_divider"></div>
+            <div id="pmpro_order_single-instructions_zelle">
+              <h3 class="pmpro_font-large">
+						    Payment Instructions: Zelle					
+              </h3>
+					    <div class="pmpro_payment_instructions">
+						    <p>
+                  To pay via Zelle, you must have an account at a bank that supports Zelle.<br>
+
+                  If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.
+                </p>
+                <p class="payment-instructions">
+                  <ul>
+                    <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
+                    <li><strong>NB</strong>: Please include your name in the payment's notes field.</li>
+                  </ul>
+                </p>
+					    </div>
+				    </div>
+          `;
+
+          $('#pmpro_order_single-instructions').after(html);
+
+        }
+      });
+    </script>
+  <?php } 
+}
+add_action('wp_head', 'add_payment_option_instructions_after_submission');
 
 // Because the visibilty toggle didn't work for the register-renew cards on the contact-us page, it has to be toggled here.
 function toggle_registration_card_on_contact_us() {
@@ -413,6 +470,25 @@ function fix_header_spacing() {
   }
 }
 add_action( 'wp_head', 'fix_header_spacing' );
+
+// Remove the extra-fields section from the pay-by-check confirmation email to admin.
+function amend_pmpro_email_body( $body ) {
+  // Check if the "Extra Fields" section exists.
+  if ( strpos( $body, 'Extra Fields:' ) !== false ) {
+    // Remove everything from "Extra Fields:" onward.
+    $body = $body ? preg_replace( '/<p>Extra Fields:.*?(<\/p>)/s', '', $body ) : $body;
+  }
+
+  // Always return the modified body
+  return $body;
+}
+add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
+
+// // Change the number of days before the expiration date for the email notification.
+// function my_pmpro_email_expiration_date_change( $days ) {
+//   return 3; //change this value to the number of days before the expiration date.
+// }
+// add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change;' );
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
