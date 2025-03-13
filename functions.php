@@ -64,13 +64,26 @@ if (!current_user_can('administrator')) {
   add_filter('show_admin_bar', '__return_false');
 }
 
-// Change the status of a new PMPro order to "pending" if the payment method is "check".
-function update_order_status_to_pending($user_id, $order) {
+// Change the status of a new PMPro order to "pending" if the payment type is "Check" or "Zelle".
+function update_order_status_to_pending( $user_id, $order ) {
   global $wpdb;
+  // Check if the payment method is 'Check or Zelle.' (The payment type when created via the site will always be "Check".)
+  if ( $order->payment_type === 'Check' || $order->payment_type === 'Zelle' ) {
 
-  // Check if the payment method is 'check.'
-  if ($order->payment_type === 'Check') {
-    // Mark subscription as "review" instead of canceling it.
+    // Query the wp_pmpro_subscriptions table for the user's active subscription, if it exists. (This is for renewals.)
+    $subscription = $wpdb->get_row( $wpdb->prepare(
+      "SELECT membership_level_id, status, startdate, next_payment_date
+      FROM {$wpdb->prefix}pmpro_subscriptions
+      WHERE user_id = %d
+      AND status = 'active'",
+      $user_id
+    ) );
+
+    error_log( 'the subscription is: ' . print_r( $subscription, true ) );
+
+    // If the order's timestamp doesn't equal the subscription's startdate, then we have a renewal: set the order's status to "Review" to maintain the user's access and don't change the subscription's status; also, update the confirmation message if the order's status is "Review" to reflect that fact.
+
+    // Mark the order as "pending" until the payment is received.
     $order->updateStatus('pending');
 
     // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
@@ -86,9 +99,11 @@ function update_order_status_to_pending($user_id, $order) {
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 
 // Activate or deactivate the membership based on the payment's status of "pending" or "success"; set the expiration date for one year.
-function log_pmpro_update_order($order) {
-  if ($order->gateway === 'check') {
-    if ($order->status === 'success') {
+function log_pmpro_update_order( $order ) {
+  global $wpdb;
+
+  if ( $order->gateway === 'check' || $order->gateway === 'zelle' ) {
+    if ( $order->status === 'success' || $order->status === 'review' ) {
       // Activate the membership.
       pmpro_changeMembershipLevel($order->membership_id, $order->user_id); 
 
@@ -100,25 +115,77 @@ function log_pmpro_update_order($order) {
 
       // Format the expiration timestamp into MySQL-compatible datetime format
       $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp); // Force the timestamp to be treated as an integer.
-      
-      // Remove the user meta flag for pending check payment.
-      delete_user_meta($order->user_id, 'pmpro_pending_check_payment');
-      
-      // Now update the user's membership enddate directly in the database.
-      global $wpdb;
-
+            
       // Update the expiration date in the `pmpro_memberships_users` table
       $updated_rows = $wpdb->update(
         $wpdb->prefix . 'pmpro_memberships_users',
-        array('enddate' => $expiration_date),  // Set the expiration (enddate)
-        array('user_id' => $order->user_id),   // Target the user by user_id
-        array('%s'),                           // Format for the enddate (datetime)
-        array('%d')                            // Format for the user_id
+        array('enddate' => $expiration_date),
+        array('user_id' => $order->user_id),
+        array('%s'),
+        array('%d')
       );
-    } 
+    } elseif ( $order->status === 'pending' ) {
+      // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
+      $wpdb->update(
+        "{$wpdb->prefix}pmpro_memberships_users",
+        array('status' => 'review'),
+        array('user_id' => $order->user_id, 'membership_id' => $order->membership_id),
+        array('%s'),
+        array('%d', '%d')
+      );
+    }
+
+    // Set flag for automatic page refresh.
+    update_user_meta($order->user_id, 'pmpro_order_status_changed', [
+      'order_id' => $order->id,
+      'status' => $order->status,
+      'timestamp' => time()
+    ]);
   }
 }
 add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
+
+// Add AJAX endpoint for checking order status changes.
+function pmpro_check_order_status_change() {
+    // Security check
+    if ( !is_user_logged_in() ) {
+        wp_send_json_error('User not logged in');
+        return;
+    }
+    
+    $user_id = get_current_user_id();
+    $status_change = get_user_meta($user_id, 'pmpro_order_status_changed', true);
+    
+    if ( !empty( $status_change ) ) {
+        // Clear the meta after sending it.
+        delete_user_meta( $user_id, 'pmpro_order_status_changed' );
+        wp_send_json_success([
+            'refresh' => true,
+            'order_id' => $status_change['order_id'],
+            'status' => $status_change['status']
+        ]);
+    } else {
+        wp_send_json_success(['refresh' => false]);
+    }
+    
+    wp_die();
+}
+add_action('wp_ajax_pmpro_check_order_status_change', 'pmpro_check_order_status_change');
+
+// Set up the necessary JavaScript variables for logged-in users for the AJAX call to check for a refresh flag.
+function pmpro_add_refresh_script_vars() {
+  if (is_user_logged_in()) {
+    ?>
+      <script type="text/javascript">
+        const pmpro_refresh_obj = {
+          ajax_url: '<?php echo admin_url('admin-ajax.php'); ?>',
+          nonce: '<?php echo wp_create_nonce('pmpro_refresh_nonce'); ?>'
+        };
+      </script>
+    <?php
+  }
+}
+add_action('wp_footer', 'pmpro_add_refresh_script_vars');
 
 // Add the link "Groups" to the right main menu when a user is logged in and has a current membership.
 function add_dynamic_menu_link($items, $args) {
@@ -509,7 +576,7 @@ add_filter('pmpro_gateways', 'my_custom_pmpro_gateway');
 
 // // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'ghostpool') !== false) {
+//   if (strpos($hook_name, 'pmpro') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });

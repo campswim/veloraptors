@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Override the scroll animation when there are only two rows in the Items block.
-jQuery(document).ready(function ($) {
+(function($) {
   // Override jQuery animate to block only scroll animations
   var originalAnimate = $.fn.animate;
   $.fn.animate = function (props, speed, easing, callback) {
@@ -416,4 +416,28 @@ jQuery(document).ready(function ($) {
     }
     return originalAnimate.apply(this, arguments);
   };      
-});
+})(jQuery);
+
+// Check for order status changes and refreshes the page if needed.
+(function($) {
+  // Only run for logged-in users.
+  if (typeof pmpro_refresh_obj !== 'undefined') {
+    // Check for order status changes every 30 seconds
+    setInterval(function() {
+      $.ajax({
+        url: pmpro_refresh_obj.ajax_url,
+        type: 'POST',
+        data: {
+          action: 'pmpro_check_order_status_change',
+          nonce: pmpro_refresh_obj.nonce
+        },
+        success: function(response) {
+          if (response.success && response.data.refresh) {
+            // Refresh the page when an order status change is detected
+            location.reload();
+          }
+        }
+      });
+    }, 15000);
+  }
+})(jQuery);
