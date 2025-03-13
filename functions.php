@@ -484,6 +484,13 @@ function amend_pmpro_email_body( $body ) {
 }
 add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
 
+// Add a custom gateway to PMPro's "Gateway" dropdown.
+function my_custom_pmpro_gateway($gateways) {
+  $gateways['zelle'] = __('Zelle', 'ghostpool-zine');
+  return $gateways;
+}
+add_filter('pmpro_gateways', 'my_custom_pmpro_gateway');
+
 // // Change the number of days before the expiration date for the email notification.
 // function my_pmpro_email_expiration_date_change( $days ) {
 //   return 3; //change this value to the number of days before the expiration date.
