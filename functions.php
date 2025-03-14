@@ -67,24 +67,27 @@ if (!current_user_can('administrator')) {
 // Change the status of a new PMPro order to "pending" if the payment type is "Check" or "Zelle".
 function update_order_status_to_pending( $user_id, $order ) {
   global $wpdb;
+  
   // Check if the payment method is 'Check or Zelle.' (The payment type when created via the site will always be "Check".)
-  if ( $order->payment_type === 'Check' || $order->payment_type === 'Zelle' ) {
-
+  if ( $order->payment_type === 'Check' || $order->payment_type === 'Zelle' ) { 
     // Query the wp_pmpro_subscriptions table for the user's active subscription, if it exists. (This is for renewals.)
     $subscription = $wpdb->get_row( $wpdb->prepare(
-      "SELECT membership_level_id, status, startdate, next_payment_date
+      "SELECT enddate
       FROM {$wpdb->prefix}pmpro_subscriptions
       WHERE user_id = %d
-      AND status = 'active'",
+        AND status = 'cancelled'
+      ORDER BY enddate DESC 
+      LIMIT 1",
       $user_id
     ) );
-
-    error_log( 'the subscription is: ' . print_r( $subscription, true ) );
-
-    // If the order's timestamp doesn't equal the subscription's startdate, then we have a renewal: set the order's status to "Review" to maintain the user's access and don't change the subscription's status; also, update the confirmation message if the order's status is "Review" to reflect that fact.
-
-    // Mark the order as "pending" until the payment is received.
-    $order->updateStatus('pending');
+    $subscription_enddate = $subscription && isset( $subscription->enddate ) ? explode( ' ', $subscription->enddate )[0] : 0;
+    $order_date = isset( $order->timestamp ) ? date( 'Y-m-d', $order->timestamp ) : '';
+    
+    // If there's a cancelled subscription whose enddate is greater or equal to the order's start date, then we have a renewal: set the order's status to "Review" to maintain the user's access and don't change the subscription's status.
+   if ( $subscription_enddate && $order_date && $subscription_enddate >= $order_date ) { // It's a renewal.
+      $order->updateStatus('review'); // This way, the renewing member doesn't lose access to the members-only content of the site, while payment is in transit.
+   } else { // It's a new subscription.
+    $order->updateStatus('pending'); // Mark the order as "pending" until the payment is received.
 
     // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
     $wpdb->update(
@@ -94,6 +97,7 @@ function update_order_status_to_pending( $user_id, $order ) {
       array('%s'),
       array('%d', '%d')
     );
+   }
   }
 }
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
@@ -206,6 +210,7 @@ add_filter( 'logout_redirect', function ($redirect_to, $requested_redirect_to, $
 
 // Revise the registration confirmation message.
 function custom_pmpro_confirmation_message($message, $invoice) {
+  // Debugging: Check how many times this runs.
   if ( is_user_logged_in() ) {    
     if ( !pmpro_hasMembershipLevel() ) {
       if ( strpos( $message, 'payment' ) !== false ) {
@@ -223,17 +228,75 @@ function custom_pmpro_confirmation_message($message, $invoice) {
               <li>Make and message friends.</li>
               <li>Make and manage your RSVPs.</li>
             </ul>
-          </p>';
+          </p>
+        ';
+
+        // Replace the first <p> tag with the payment message
+        $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
+        return $message;
       } 
     } else {
-      if ( strpos($message, 'active') !== false ) {
-        $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome to the club!</p>';
+      global $wpdb;
+
+      // Check if this checkout is for a renewal: get the last subscription's enddate and compare it to today.
+      $user_id = get_current_user_id();
+      $subscription = $wpdb->get_row( $wpdb->prepare(
+        "SELECT enddate
+        FROM {$wpdb->prefix}pmpro_subscriptions
+        WHERE user_id = %d
+          AND status = 'cancelled'
+        ORDER BY enddate DESC 
+        LIMIT 1",
+        $user_id
+      ) );
+      $subscription_enddate = $subscription && isset( $subscription->enddate ) ? explode( ' ', $subscription->enddate )[0] : 0;
+      $current_date = date( 'Y-m-d', time() );
+      
+      if ( $subscription_enddate >= $current_date ) { // This is a renewal.
+        $replace_with = '<p>Thank you for submitting the application to renew your membership with us.</p><p>Your account has been marked as paid, so that you may continue enjoying access to the benefits of membership while your payment is in transit.</p><p>Please remit the annual fee via check or Zelle within seven calendar days to ensure that your membership remains active.</p><div class="pmpro_message pmpro_alert">We are waiting for your payment to be delivered.</div>';
+
+    add_action('wp_footer', function() {
+      ?>
+        <script>
+          document.addEventListener('DOMContentLoaded', () => {
+            const observer = new MutationObserver(() => {
+              // Change "Paid" to "Pending" in the span element
+              const targetSpan = document.querySelector('span.pmpro_list_item_value.pmpro_tag.pmpro_tag-success');
+              if (targetSpan && targetSpan.textContent.trim() === 'Paid') {
+                targetSpan.className = 'pmpro_list_item_value pmpro_tag pmpro_tag-alert';
+                targetSpan.textContent = 'Pending';
+              }
+
+              // Change "paid" to "billed" in the #pmpro_order_single-items h3 element
+              const targetH3 = document.querySelector('#pmpro_order_single-items h3.pmpro_font-large');
+              if (targetH3 && targetH3.textContent.includes('paid')) {
+                targetH3.textContent = targetH3.textContent.replace('paid', 'billed');
+              }
+
+              // Disconnect the observer if both changes are made
+              if (targetSpan && targetH3) {
+                observer.disconnect();
+              }
+            });
+
+            // Observe DOM changes
+            observer.observe(document.body, { childList: true, subtree: true });
+          });
+        </script>
+      <?php
+    });        
+        return $replace_with;
+      } else if ( strpos($message, 'active') !== false ) {
+        $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome you to the club!</p>';
+
+        // Replace the first <p> tag with the activation message
+        $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
+        return $message;
       }
     }
   }
-  
-  $message = $message ? preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1) : $message;
-  return $message;
+
+  return $message; // If no conditions match, return the original message
 }
 add_filter('pmpro_confirmation_message', 'custom_pmpro_confirmation_message', 10, 2);
 
@@ -509,11 +572,21 @@ function my_custom_pmpro_gateway($gateways) {
 }
 add_filter('pmpro_gateways', 'my_custom_pmpro_gateway');
 
-// // Change the number of days before the expiration date for the email notification.
-// function my_pmpro_email_expiration_date_change( $days ) {
-//   return 3; //change this value to the number of days before the expiration date.
-// }
-// add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change;' );
+// Change the number of days before the expiration date for the email notification.
+function my_pmpro_email_expiration_date_change( $days ) {
+  return 15; //change this value to the number of days before the expiration date.
+}
+add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
+
+function pmpro_custom_billing_url( $email ) {
+
+  error_log( 'the email is: ' . print_r( $email ) );
+
+    $user_name = $email->user_id;
+    // $billing_url = home_url("/membership-account-$user_name/" . $user_id);
+    // return $billing_url;
+}
+add_filter('pmpro_email_template_variables', 'pmpro_custom_billing_url');
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
@@ -523,6 +596,9 @@ add_filter('pmpro_gateways', 'my_custom_pmpro_gateway');
 
 // // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
+//   error_log( 'the current time: ' . time() );
+//   error_log( 'the curernt time formatted: ' . date('Y-m-d', time() ));
+
 // });
 
 // // Log all available [PMPro] hooks.

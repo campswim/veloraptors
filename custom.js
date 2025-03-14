@@ -52,9 +52,6 @@ if (typeof addRSVPLink === 'undefined') {
                 nodeTitle = event?.children[0]?.innerText?.split(' ').join('-').toLowerCase() || '';
                 
                 if (eventTitle === nodeTitle) {                  
-
-                  console.log({ eventTitle, nodeTitle });
-
                   // Get the event detail's dates for squaring with the chosen date.
                   for (const node of event?.children) {
                     const children = node?.children;
@@ -82,8 +79,6 @@ if (typeof addRSVPLink === 'undefined') {
                     
                     // If the selected date fits within the start and end dates, 
                     if (eventStartDate && (dateFormatted === eventStartDate || (eventEndDate && dateFormatted <= eventEndDate))) {
-                      console.log({ dateFormatted, eventStartDate, eventEndDate });
-
                       const descriptionElement = event;
     
                       if (descriptionElement && !descriptionElement.querySelector('.rsvp-link')
@@ -231,7 +226,7 @@ if (typeof tabRedirectAndScrollSupppression === 'undefined') {
 if (typeof hidePopularTag === 'undefined') {
   var hidePopularTag = () => {
     const mostPopularTag = document.querySelectorAll('.gp-level-badge');
-    
+
     if (mostPopularTag) {
       Object.values(mostPopularTag).forEach(tag => {
         tag.style.display = 'none';
