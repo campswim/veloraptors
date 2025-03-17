@@ -253,7 +253,7 @@ function custom_pmpro_confirmation_message($message, $invoice) {
       $current_date = date( 'Y-m-d', time() );
       
       if ( $subscription_enddate >= $current_date ) { // This is a renewal.
-        $replace_with = '<p>Thank you for submitting the application to renew your membership with us.</p><p>Your account has been marked as paid, so that you may continue enjoying access to the benefits of membership while your payment is in transit.</p><p>Please remit the annual fee via check or Zelle within seven calendar days to ensure that your membership remains active.</p><div class="pmpro_message pmpro_alert">We are waiting for your payment to be delivered.</div>';
+        $replace_with = '<p>Thank you for submitting the application to renew your membership with us.</p><p>Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership.</p><p>Please remit the annual fee via check or Zelle within seven calendar days to ensure that your membership remains active.</p><div class="pmpro_message pmpro_alert">We are waiting for your payment to be delivered.</div>';
 
     add_action('wp_footer', function() {
       ?>
@@ -578,15 +578,17 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
-function pmpro_custom_billing_url( $email ) {
+function pmpro_custom_billing_url( $emails ) {
 
-  error_log( 'the email is: ' . print_r( $email ) );
+  error_log( 'the email is: ' . print_r( $emails, true ) );
 
-    $user_name = $email->user_id;
+    // $user_name = $email->user_id;
     // $billing_url = home_url("/membership-account-$user_name/" . $user_id);
     // return $billing_url;
+
+    return $emails;
 }
-add_filter('pmpro_email_template_variables', 'pmpro_custom_billing_url');
+add_filter('pmpro_email_templates', 'pmpro_custom_billing_url');
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
