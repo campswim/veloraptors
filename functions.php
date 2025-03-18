@@ -160,7 +160,7 @@ function add_dynamic_menu_link($items, $args) {
 }
 add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
 
-// Remove the "Calendar link from the left main menu when a member is logged in. (Logged-in nonmembers should still see the link.)
+// Remove the "Calendar" link from the left main menu when a member is logged in. (Logged-in nonmembers should still see the link.)
 function remove_calendar_link($items, $args) {
   if ($args->menu === 'left-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel()) {
     // Find the last occurrence of <li.
@@ -181,7 +181,7 @@ function remove_calendar_link($items, $args) {
 }
 add_filter('wp_nav_menu_items', 'remove_calendar_link', 10, 2);
 
-// Redirect user to homepage after logout, not the WP login page.
+// Redirect the user to the homepage after logout, not the WP login page.
 function custom_logout_redirect() {
   wp_redirect( home_url() ); 
   exit();
@@ -208,7 +208,7 @@ add_filter( 'logout_redirect', function ($redirect_to, $requested_redirect_to, $
   return $redirect_to;
 }, 10, 3);
 
-// Revise the registration confirmation message.
+// Revise the registration confirmation message (after the renewal process, too).
 function custom_pmpro_confirmation_message($message, $invoice) {
   // Debugging: Check how many times this runs.
   if ( is_user_logged_in() ) {    
@@ -255,36 +255,38 @@ function custom_pmpro_confirmation_message($message, $invoice) {
       if ( $subscription_enddate >= $current_date ) { // This is a renewal.
         $replace_with = '<p>Thank you for submitting the application to renew your membership with us.</p><p>Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership.</p><p>Please remit the annual fee via check or Zelle within seven calendar days to ensure that your membership remains active.</p><div class="pmpro_message pmpro_alert">We are waiting for your payment to be delivered.</div>';
 
-    add_action('wp_footer', function() {
-      ?>
-        <script>
-          document.addEventListener('DOMContentLoaded', () => {
-            const observer = new MutationObserver(() => {
-              // Change "Paid" to "Pending" in the span element
-              const targetSpan = document.querySelector('span.pmpro_list_item_value.pmpro_tag.pmpro_tag-success');
-              if (targetSpan && targetSpan.textContent.trim() === 'Paid') {
-                targetSpan.className = 'pmpro_list_item_value pmpro_tag pmpro_tag-alert';
-                targetSpan.textContent = 'Pending';
-              }
+        add_action('wp_footer', function() {
+          ?>
+            <script>
+              document.addEventListener('DOMContentLoaded', () => {
+                const observer = new MutationObserver(() => {
+                  // Change "Paid" to "Pending" in the span element.
+                  const targetSpan = document.querySelector('span.pmpro_list_item_value.pmpro_tag.pmpro_tag-success');
+                  
+                  if (targetSpan && targetSpan.textContent.trim() === 'Paid') {
+                    targetSpan.className = 'pmpro_list_item_value pmpro_tag pmpro_tag-alert';
+                    targetSpan.textContent = 'Pending';
+                  }
 
-              // Change "paid" to "billed" in the #pmpro_order_single-items h3 element
-              const targetH3 = document.querySelector('#pmpro_order_single-items h3.pmpro_font-large');
-              if (targetH3 && targetH3.textContent.includes('paid')) {
-                targetH3.textContent = targetH3.textContent.replace('paid', 'billed');
-              }
+                  // Change "paid" to "billed" in the #pmpro_order_single-items h3 element
+                  const targetH3 = document.querySelector('#pmpro_order_single-items h3.pmpro_font-large');
+                  if (targetH3 && targetH3.textContent.includes('paid')) {
+                    targetH3.textContent = targetH3.textContent.replace('paid', 'billed');
+                  }
 
-              // Disconnect the observer if both changes are made
-              if (targetSpan && targetH3) {
-                observer.disconnect();
-              }
-            });
+                  // Disconnect the observer if both changes are made
+                  if (targetSpan && targetH3) {
+                    observer.disconnect();
+                  }
+                });
 
-            // Observe DOM changes
-            observer.observe(document.body, { childList: true, subtree: true });
-          });
-        </script>
-      <?php
-    });        
+                // Observe DOM changes
+                observer.observe(document.body, { childList: true, subtree: true });
+              });
+            </script>
+          <?php
+        });
+
         return $replace_with;
       } else if ( strpos($message, 'active') !== false ) {
         $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome you to the club!</p>';
@@ -300,47 +302,43 @@ function custom_pmpro_confirmation_message($message, $invoice) {
 }
 add_filter('pmpro_confirmation_message', 'custom_pmpro_confirmation_message', 10, 2);
 
-// Flush rewrite rules ONCE when switching themes
+// Flush rewrite rules ONCE when switching themes.
 function custom_rsvp_flush_rewrite() {
-  custom_rsvp_post_type(); // Ensure the CPT is registered first
+  custom_rsvp_post_type(); // Ensure the CPT is registered first.
   flush_rewrite_rules();
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
-// Filter archived posts out of the query, unless on the archive page.
-function customize_ghostpool_query( $args ) {
-  if ( !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
+// Filter archived posts out of the query, unless on the archive page. NOT IN USE: use the category tax query in the Items block instead.
+function exclude_archive_category_from_items_query( $args ) {  
+  $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
 
-    // Ensure 'tax_query' exists.
-    if ( !isset( $args['tax_query'] ) ) {
-      $args['tax_query'] = [];
-    }
+  // if ( !$is_ajax && !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
+  //   if ( !isset( $args['tax_query'] ) ) {
+  //     $args['tax_query'] = [];
+  //   }
 
-    // Store the original tax query.
-    $existing_tax_query = $args['tax_query'];
+  //   $existing_tax_query = $args['tax_query'];
 
-    // Add the exclusion for the "archive" category
-    $archive_exclusion = [
-      'taxonomy'         => 'category',
-      'field'            => 'slug',
-      'terms'            => ['archive'],
-      'operator'         => 'NOT IN',
-      'include_children' => false,
-    ];
+  //   $archive_exclusion = [
+  //     'taxonomy'         => 'category',
+  //     'field'            => 'slug',
+  //     'terms'            => ['archive'],
+  //     'operator'         => 'NOT IN',
+  //     'include_children' => false,
+  //   ];
 
-    // Wrap everything in an AND relation
-    $args['tax_query'] = [
-      'relation' => 'AND',
-      [
-        ...$existing_tax_query,
-      ],
-      $archive_exclusion,
-    ];
-  }
-
+  //   $args['tax_query'] = [
+  //     'relation' => 'AND',
+  //     [
+  //       ...$existing_tax_query,
+  //     ],
+  //     $archive_exclusion,
+  //   ];
+  // }
   return $args;
 }
-add_filter( 'ghostpool_items_query', 'customize_ghostpool_query' );
+// add_filter( 'ghostpool_items_query', 'exclude_archive_category_from_items_query' );
 
 /* Add SEO to public pages; noindex for members-only pages.*/
 // Define public pages by their slug
@@ -384,112 +382,6 @@ function my_custom_seo_meta() {
   }
 }
 add_action( 'wp_head', 'my_custom_seo_meta' );
-
-// Add the Zelle payment-option instructions to the checkout page.
-function add_payment_option_tabs_before_payment() {
-  ?>
-    <script type="text/javascript">
-      jQuery(document).ready(function($) {
-        // Ensure the fieldset is loaded before applying changes.
-        if ($('#pmpro_payment_information_fields').length) {
-        // Create the tabs structure.
-        const tabsHtml = `
-            <div class="payment-tabs">
-                <button class="tab-button active" data-target="check">Pay by Check</button>
-                <button class="tab-button" data-target="zelle">Pay via Zelle</button>
-            </div>
-        `;
-        
-        // Insert the tabs above the pmpro_payment_information_fields fieldset.
-        $('#pmpro_payment_information_fields').prepend(tabsHtml);
-
-        const zellePaymentHtml = `
-          <div class="pmpro_card payment-option zelle">
-            <div class="pmpro_card_content">
-              <legend class="pmpro_form_legend">
-                <h2 class="pmpro_form_heading pmpro_font-large">Pay via Zelle</h2>
-              </legend>
-              <div class="pmpro_form_fields">
-                <div class="pmpro_form_field pmpro_zelle_instructions pmpro_checkout">
-                  <p class="payment-instructions">To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
-                  <p class="payment-instructions">If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.</p>
-                  <ul>
-                    <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
-                    <li><strong>NB:</strong> Please include your name in the payment's notes field.</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        // Add classes to the check-payment info card.
-        $('.pmpro_card').addClass('payment-option check active');
-
-        // Insert payment options HTML after the first payment option's div.
-        $('#pmpro_payment_information_fields .pmpro_card').after(zellePaymentHtml);
-
-        // Handle tab switching.
-        $('.tab-button').click(event => {
-          event.preventDefault();
-
-          // Get the clicked tab.
-          const target = $(this).data('target');
-          
-          // Remove active class from all tab buttons.
-          $('.tab-button').removeClass('active');
-
-          // Add active class to the clicked tab.
-          $(this).addClass('active');
-
-          // Hide all payment options.
-          $('.payment-option').removeClass('active');
-
-          // Show the corresponding payment option.
-          $('.' + target).addClass('active');                });
-        }
-      });
-    </script>
-    <?php
-}
-add_action('wp_head', 'add_payment_option_tabs_before_payment');
-
-// Add the Zelle payment-option instructions to the application-confirmation page (path: /membership-confirmation/).
-function add_payment_option_instructions_after_submission() {
-  if ( is_page( 'membership-confirmation' ) ) { ?>
-    <script type="text/javascript">
-      jQuery(document).ready($ => {
-        if ($('#pmpro_order_single-instructions').length) {
-          const html = `
-            <div class="pmpro_divider"></div>
-            <div id="pmpro_order_single-instructions_zelle">
-              <h3 class="pmpro_font-large">
-						    Payment Instructions: Zelle					
-              </h3>
-					    <div class="pmpro_payment_instructions">
-						    <p>
-                  To pay via Zelle, you must have an account at a bank that supports Zelle.<br>
-
-                  If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.
-                </p>
-                <p class="payment-instructions">
-                  <ul>
-                    <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
-                    <li><strong>NB</strong>: Please include your name in the payment's notes field.</li>
-                  </ul>
-                </p>
-					    </div>
-				    </div>
-          `;
-
-          $('#pmpro_order_single-instructions').after(html);
-
-        }
-      });
-    </script>
-  <?php } 
-}
-add_action('wp_head', 'add_payment_option_instructions_after_submission');
 
 // Because the visibilty toggle didn't work for the register-renew cards on the contact-us page, it has to be toggled here.
 function toggle_registration_card_on_contact_us() {
@@ -565,6 +457,140 @@ function amend_pmpro_email_body( $body ) {
 }
 add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
 
+// Add the Zelle payment-option instructions to the checkout page.
+function add_payment_option_tabs_before_payment() {
+  ?>
+    <script type="text/javascript">
+      jQuery(document).ready(function($) {
+        // Ensure the fieldset is loaded before applying changes.
+        if ($('#pmpro_payment_information_fields').length) {
+          // Create the tabs structure.
+          const tabsHtml = `
+              <div class="payment-tabs">
+                  <button class="tab-button active" data-target="check">Pay by Check</button>
+                  <button class="tab-button" data-target="zelle">Pay via Zelle</button>
+              </div>
+          `;
+          
+          // Insert the tabs above the pmpro_payment_information_fields fieldset.
+          $('#pmpro_payment_information_fields').prepend(tabsHtml);
+
+          const zellePaymentHtml = `
+            <div class="pmpro_card payment-option zelle">
+              <div class="pmpro_card_content">
+                <legend class="pmpro_form_legend">
+                  <h2 class="pmpro_form_heading pmpro_font-large">Pay via Zelle</h2>
+                </legend>
+                <div class="pmpro_form_fields">
+                  <div class="pmpro_form_field pmpro_zelle_instructions pmpro_checkout">
+                    <p class="payment-instructions">To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
+                    <p class="payment-instructions">If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.</p>
+                    <ul>
+                      <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
+                      <li><strong>NB:</strong> Please include your name in the payment's notes field.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          // Add classes to the check-payment info card.
+          $('.pmpro_card').addClass('payment-option check active');
+
+          // Insert payment options HTML after the first payment option's div.
+          $('#pmpro_payment_information_fields .pmpro_card').after(zellePaymentHtml);
+
+          // Handle tab switching.
+          $('.tab-button').click(function(event) {
+            event.preventDefault();
+
+            // Get the clicked tab.
+            const target = $(this).data('target');
+            
+            // Remove active class from all tab buttons.
+            $('.tab-button').removeClass('active');
+
+            // Add active class to the clicked tab.
+            $(this).addClass('active');
+
+            // Hide all payment options.
+            $('.payment-option').removeClass('active');
+
+            // Show the corresponding payment option.
+            $('.' + target).addClass('active');                
+          });
+        }
+      });
+    </script>
+  <?php
+}
+add_action('wp_head', 'add_payment_option_tabs_before_payment');
+
+// Add the Zelle payment-option instructions to the application-confirmation page (path: "/membership-checkout/membership-confirmation/?pmpro_level={level}").
+function add_payment_option_instructions_after_submission() {
+  // Both the regular checkout and renewal processes redirect to this page.
+  if ( is_page( 'membership-confirmation' ) ) { ?>
+    <script type="text/javascript">
+      const zelleHtml = `
+        <div class="pmpro_divider"></div>
+        <div id="pmpro_order_single-instructions_zelle">
+          <h3 class="pmpro_font-large">
+            Payment Instructions: Zelle					
+          </h3>
+          <div class="pmpro_payment_instructions">
+            <p>
+              To pay via Zelle, you must have an account at a bank that supports Zelle.<br>
+
+              If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.
+            </p>
+            <p class="payment-instructions">
+              <ul>
+                <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
+                <li><strong>NB</strong>: Please include your name in the payment's notes field.</li>
+              </ul>
+            </p>
+          </div>
+        </div>
+      `;
+      const checkHtml = `
+        <div class="pmpro_divider"></div>
+        <div id="pmpro_order_single-instructions">
+          <h3 class="pmpro_font-large">
+            Payment Instructions: Check					
+          </h3>
+          <div class="pmpro_payment_instructions">
+            <p>
+              Please make a check in the amount of the membership fee payable to <u>VeloRaptors</u> and mail it to the following address:
+            </p>
+            <p class="payment-instructions">
+              Kathy Tate<br>
+              5333 Terra Granada Dr., #4B<br>
+              Walnut Creek, CA 94595
+            </p>
+          </div>
+        </div>
+      `;
+
+      jQuery(document).ready($ => {
+        // Target the receipt after regular checkout.
+        if ($('#pmpro_order_single-instructions').length) {
+
+          // Add the Zelle instructions under the pay-by-check instructions.
+          $('#pmpro_order_single-instructions').after(zelleHtml);
+        } else { // On a renewal's confirmation page: add both sets of instructions.          
+          if ($('.pmpro_card_content').length) {
+            const html =  checkHtml + zelleHtml + '<div class="pmpro_divider"></div>';
+  
+            $('.pmpro_card_content').first().children().eq(1).after(html);
+          }
+        }
+      });
+    </script>
+  <?php } 
+}
+add_action('wp_head', 'add_payment_option_instructions_after_submission');
+
 // Add a custom gateway to PMPro's "Gateway" dropdown.
 function my_custom_pmpro_gateway($gateways) {
   $gateways['zelle'] = __('Zelle', 'ghostpool-zine');
@@ -578,17 +604,13 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
-function pmpro_custom_billing_url( $emails ) {
 
-  error_log( 'the email is: ' . print_r( $emails, true ) );
-
-    // $user_name = $email->user_id;
-    // $billing_url = home_url("/membership-account-$user_name/" . $user_id);
-    // return $billing_url;
-
-    return $emails;
-}
-add_filter('pmpro_email_templates', 'pmpro_custom_billing_url');
+// // View the Elementor Items widget's tax query.
+// function view_elementor_items_widget_query( $query ) {
+//   error_log( 'the query is: ' . print_r( $query, true ) );
+//   if ( $query && isset( $query->settings))
+// }
+// add_filter( 'elementor/element/ghostpool_items/_ghostpool_section_content_query/before_section_start', 'view_elementor_items_widget_query' );
 
 // // View the queries.
 // function exclude_archive_public_tag( $query ) {
@@ -605,13 +627,13 @@ add_filter('pmpro_email_templates', 'pmpro_custom_billing_url');
 
 // // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'pmpro') !== false) {
+//   if (strpos($hook_name, 'elementor') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
 
 // // View the SQL.
 // add_filter( 'posts_request', function( $sql ) {
-//     error_log( 'SQL Query: ' . $sql );
-//     return $sql;
+//   error_log( 'SQL Query: ' . $sql );
+//   return $sql;
 // });

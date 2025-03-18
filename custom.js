@@ -360,7 +360,7 @@ if (typeof hideHeaderInModal === 'undefined') {
   }
 }
 
-// Reposition the login button after a failed sign-in attempl.
+// Reposition the login button after a failed sign-in attempt.
 if (typeof repositionLoginButton === 'undefined') {
   var repositionLoginButton = () => {
   // Get the button wrapper
@@ -401,14 +401,14 @@ document.addEventListener('DOMContentLoaded', () => {
   fixLoginMemberRedirect();
 });
 
-// Override the scroll animation when there are only two rows in the Items block.
-(function($) {
-  // Override jQuery animate to block only scroll animations
-  var originalAnimate = $.fn.animate;
-  $.fn.animate = function (props, speed, easing, callback) {
-    if (props.scrollTop !== undefined) {
-      return this; // Block only scroll animations
-    }
-    return originalAnimate.apply(this, arguments);
-  };      
-})(jQuery);
+// // Override the scroll animation when there are only two rows in the Items block.
+// (function($) {
+//   // Override jQuery animate to block only scroll animations
+//   var originalAnimate = $.fn.animate;
+//   $.fn.animate = function (props, speed, easing, callback) {
+//     if (props.scrollTop !== undefined) {
+//       return this; // Block only scroll animations
+//     }
+//     return originalAnimate.apply(this, arguments);
+//   };      
+// })(jQuery);
