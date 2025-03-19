@@ -388,6 +388,20 @@ if (typeof fixLoginMemberRedirect === 'undefined') {
   }
 }
 
+// Format the "Learn More" button on the public-facing homepage.
+const formatLearnMoreButton = () => {
+  if (window.location.pathname === '/') {
+    document.querySelectorAll('.gp-button').forEach(button => {
+      if (button?.textContent === 'Learn More') {
+        button.style.width = '25rem';
+        button.style.fontSize = '2rem';
+        button.style.fontWeight = 'bolder';
+        button.style.padding = '2rem';
+      }
+    })
+  }
+}
+
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLink();
@@ -399,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
   hideHeaderInModal();
   repositionLoginButton();
   fixLoginMemberRedirect();
+  formatLearnMoreButton();
 });
 
 // // Override the scroll animation when there are only two rows in the Items block.

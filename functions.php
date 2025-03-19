@@ -591,15 +591,14 @@ function add_payment_option_instructions_after_submission() {
 }
 add_action('wp_head', 'add_payment_option_instructions_after_submission');
 
-// // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which undesirable.)
-// require_once get_stylesheet_directory() . '/class.pmprogateway_zelle.php';
-
 // Change the number of days before the expiration date for the email notification.
 function my_pmpro_email_expiration_date_change( $days ) {
   return 15; //change this value to the number of days before the expiration date.
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
+// // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which undesirable.)
+// require_once get_stylesheet_directory() . '/class.pmprogateway_zelle.php';
 
 // // View the Elementor Items widget's tax query.
 // function view_elementor_items_widget_query( $query ) {
