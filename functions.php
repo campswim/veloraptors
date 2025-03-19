@@ -591,12 +591,8 @@ function add_payment_option_instructions_after_submission() {
 }
 add_action('wp_head', 'add_payment_option_instructions_after_submission');
 
-// Add a custom gateway to PMPro's "Gateway" dropdown.
-function my_custom_pmpro_gateway($gateways) {
-  $gateways['zelle'] = __('Zelle', 'ghostpool-zine');
-  return $gateways;
-}
-add_filter('pmpro_gateways', 'my_custom_pmpro_gateway');
+// // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which undesirable.)
+// require_once get_stylesheet_directory() . '/class.pmprogateway_zelle.php';
 
 // Change the number of days before the expiration date for the email notification.
 function my_pmpro_email_expiration_date_change( $days ) {
