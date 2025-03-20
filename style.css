@@ -52,11 +52,7 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
 }
 
 /* Remove Elementor's image carousel's arrows in mobile. */
-.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
-  display: none;
-}
-
-.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
+.elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev, .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
   display: none;
 }
 
@@ -220,6 +216,23 @@ p.payment-instructions, .payment-instructions + ul li {
   width: 100%;
 }
 
+/* Increase the font size of calendars' event titles and descriptions. */
+.simcal-event-title {
+  font-size: 0.8rem;
+}
+
+/* .simcal-day {
+  background-color: #E6BCCD;
+} */
+
+/* Reverse the colors of certain BuddyPress links that can't be changed via the BP settings. This is for readability. */
+.friendship-button.pending_friend.generic-button a, .friendship-button.not_friends.generic-button a, td.notification-description a {
+  color: #071021;
+}
+.friendship-button.pending_friend.generic-button a:hover, .friendship-button.not_friends.generic-button a:hover, td.notification-description a:hover {
+    color: #D36555;
+}
+
 @media all and (min-width: 500px) {
   table.rsvp-attendees-list-table td {
     font-size: 1rem;
@@ -241,11 +254,8 @@ p.payment-instructions, .payment-instructions + ul li {
 }
 
 @media all and (min-width: 1024px) {
-  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev {
-    display: inline-flex;
-  }
-
-  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
+  /* Show the carousel's nav arrows on desktop. */
+  .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-prev, .elementor-image-carousel-wrapper.swiper.swiper-fade.swiper-initialized.swiper-horizontal.swiper-watch-progress > .elementor-swiper-button.elementor-swiper-button-next {
     display: inline-flex;
   }
 

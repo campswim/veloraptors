@@ -309,45 +309,6 @@ function custom_rsvp_flush_rewrite() {
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
-// Filter archived posts out of the query, unless on the archive page. (NRC: not using, because the Items widget has the ability to handle multiple categories--though I had to patch the items.php file, because the data-tax-query attribute was being set with malformed JSON: it required adding "" around the value and using esc_attr().)
-function exclude_archive_category_from_items_query( $args ) {
-  $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
-
-  if ( !$is_ajax && !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
-    if ( !isset( $args['tax_query'] ) ) {
-      $args['tax_query'] = [];
-    }
-
-    $existing_tax_query = $args['tax_query'];
-
-    error_log( 'the tax query before: ' . print_r( $existing_tax_query, true ) );
-
-    // $archive_exclusion = [
-    //   'taxonomy'         => 'category',
-    //   'field'            => 'slug',
-    //   'terms'            => ['archive'],
-    //   'operator'         => 'NOT IN',
-    //   'include_children' => false,
-    // ];
-
-    // $args['tax_query'] = [
-    //   'relation' => 'AND',
-    //   [
-    //     ...$existing_tax_query,
-    //   ],
-    //   $archive_exclusion,
-    // ];
-
-    // error_log( 'the tax query after: ' . print_r( $existing_tax_query, true ) );
-
-  } else {
-    error_log( 'the tax query when it is ajax: ' . print_r( $args['tax_query'], true ) );
-
-  }
-  return $args;
-}
-// add_filter( 'ghostpool_items_query', 'exclude_archive_category_from_items_query' );
-
 /* Add SEO to public pages; noindex for members-only pages.*/
 // Define public pages by their slug
 function my_public_pages() {
@@ -639,3 +600,20 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 //   error_log( 'SQL Query: ' . $sql );
 //   return $sql;
 // });
+
+// // View the Items loop's tax query.
+// function exclude_archive_category_from_items_query( $args ) {
+//   $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
+
+//   if ( !$is_ajax ) {
+
+//     error_log( 'the tax query when NOT ajax: ' . print_r( $args['tax_query'], true ) );
+
+//   } else {
+
+//     error_log( 'the tax query when it is ajax: ' . print_r( $args['tax_query'], true ) );
+
+//   }
+//   return $args;
+// }
+// add_filter( 'ghostpool_items_query', 'exclude_archive_category_from_items_query' );
