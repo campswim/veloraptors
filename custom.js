@@ -416,14 +416,14 @@ document.addEventListener('DOMContentLoaded', () => {
   formatLearnMoreButton();
 });
 
-// // Override the scroll animation when there are only two rows in the Items block.
-// (function($) {
-//   // Override jQuery animate to block only scroll animations
-//   var originalAnimate = $.fn.animate;
-//   $.fn.animate = function (props, speed, easing, callback) {
-//     if (props.scrollTop !== undefined) {
-//       return this; // Block only scroll animations
-//     }
-//     return originalAnimate.apply(this, arguments);
-//   };      
-// })(jQuery);
+// Override the scroll animation when there are only two rows in the Items block.
+(function($) {
+  // Override jQuery animate to block only scroll animations
+  var originalAnimate = $.fn.animate;
+  $.fn.animate = function (props, speed, easing, callback) {
+    if (props.scrollTop !== undefined) {
+      return this; // Block only scroll animations
+    }
+    return originalAnimate.apply(this, arguments);
+  };      
+})(jQuery);

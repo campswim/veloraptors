@@ -309,33 +309,41 @@ function custom_rsvp_flush_rewrite() {
 }
 add_action('after_switch_theme', 'custom_rsvp_flush_rewrite');
 
-// Filter archived posts out of the query, unless on the archive page. NOT IN USE: use the category tax query in the Items block instead.
-function exclude_archive_category_from_items_query( $args ) {  
+// Filter archived posts out of the query, unless on the archive page. (NRC: not using, because the Items widget has the ability to handle multiple categories--though I had to patch the items.php file, because the data-tax-query attribute was being set with malformed JSON: it required adding "" around the value and using esc_attr().)
+function exclude_archive_category_from_items_query( $args ) {
   $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
 
-  // if ( !$is_ajax && !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
-  //   if ( !isset( $args['tax_query'] ) ) {
-  //     $args['tax_query'] = [];
-  //   }
+  if ( !$is_ajax && !is_page( 'archive-public') && !is_page( 'archive-private' ) ) {
+    if ( !isset( $args['tax_query'] ) ) {
+      $args['tax_query'] = [];
+    }
 
-  //   $existing_tax_query = $args['tax_query'];
+    $existing_tax_query = $args['tax_query'];
 
-  //   $archive_exclusion = [
-  //     'taxonomy'         => 'category',
-  //     'field'            => 'slug',
-  //     'terms'            => ['archive'],
-  //     'operator'         => 'NOT IN',
-  //     'include_children' => false,
-  //   ];
+    error_log( 'the tax query before: ' . print_r( $existing_tax_query, true ) );
 
-  //   $args['tax_query'] = [
-  //     'relation' => 'AND',
-  //     [
-  //       ...$existing_tax_query,
-  //     ],
-  //     $archive_exclusion,
-  //   ];
-  // }
+    // $archive_exclusion = [
+    //   'taxonomy'         => 'category',
+    //   'field'            => 'slug',
+    //   'terms'            => ['archive'],
+    //   'operator'         => 'NOT IN',
+    //   'include_children' => false,
+    // ];
+
+    // $args['tax_query'] = [
+    //   'relation' => 'AND',
+    //   [
+    //     ...$existing_tax_query,
+    //   ],
+    //   $archive_exclusion,
+    // ];
+
+    // error_log( 'the tax query after: ' . print_r( $existing_tax_query, true ) );
+
+  } else {
+    error_log( 'the tax query when it is ajax: ' . print_r( $args['tax_query'], true ) );
+
+  }
   return $args;
 }
 // add_filter( 'ghostpool_items_query', 'exclude_archive_category_from_items_query' );
@@ -617,7 +625,6 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 // add_action('wp_footer', function() {
 //   error_log( 'the current time: ' . time() );
 //   error_log( 'the curernt time formatted: ' . date('Y-m-d', time() ));
-
 // });
 
 // // Log all available [PMPro] hooks.
