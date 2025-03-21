@@ -70,34 +70,7 @@ function update_order_status_to_pending( $user_id, $order ) {
   
   // Check if the payment method is 'Check or Zelle.' (The payment type when created via the site will always be "Check".)
   if ( $order->payment_type === 'Check' || $order->payment_type === 'Zelle' ) { 
-    // Query the wp_pmpro_subscriptions table for the user's active subscription, if it exists. (This is for renewals.)
-    $subscription = $wpdb->get_row( $wpdb->prepare(
-      "SELECT enddate
-      FROM {$wpdb->prefix}pmpro_subscriptions
-      WHERE user_id = %d
-        AND status = 'cancelled'
-      ORDER BY enddate DESC 
-      LIMIT 1",
-      $user_id
-    ) );
-    $subscription_enddate = $subscription && isset( $subscription->enddate ) ? explode( ' ', $subscription->enddate )[0] : 0;
-    $order_date = isset( $order->timestamp ) ? date( 'Y-m-d', $order->timestamp ) : '';
-    
-    // If there's a cancelled subscription whose enddate is greater or equal to the order's start date, then we have a renewal: set the order's status to "Review" to maintain the user's access and don't change the subscription's status.
-   if ( $subscription_enddate && $order_date && $subscription_enddate >= $order_date ) { // It's a renewal.
-      $order->updateStatus('review'); // This way, the renewing member doesn't lose access to the members-only content of the site, while payment is in transit.
-   } else { // It's a new subscription.
     $order->updateStatus('pending'); // Mark the order as "pending" until the payment is received.
-
-    // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
-    $wpdb->update(
-      "{$wpdb->prefix}pmpro_memberships_users",
-      array('status' => 'review'),
-      array('user_id' => $user_id, 'membership_id' => $order->membership_id),
-      array('%s'),
-      array('%d', '%d')
-    );
-   }
   }
 }
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
@@ -129,7 +102,7 @@ function log_pmpro_update_order( $order ) {
         array('%d')
       );
     } elseif ( $order->status === 'pending' ) {
-      // Set the user's subscription's status to 'review' (keeps subscription active, but restricts access until payment is received).
+      // Set the user's status to 'review' (restricts access until payment is received).
       $wpdb->update(
         "{$wpdb->prefix}pmpro_memberships_users",
         array('status' => 'review'),
@@ -210,9 +183,36 @@ add_filter( 'logout_redirect', function ($redirect_to, $requested_redirect_to, $
 
 // Revise the registration confirmation message (after the renewal process, too).
 function custom_pmpro_confirmation_message($message, $invoice) {
-  // Debugging: Check how many times this runs.
-  if ( is_user_logged_in() ) {    
-    if ( !pmpro_hasMembershipLevel() ) {
+  if ( is_user_logged_in() ) { // The user should have a registered account.
+    global $wpdb;
+
+    // Get the current date.
+    $current_date = date( 'Y-m-d', time() );
+    $new_order_startdate = '';
+    $old_order_enddate = '';
+
+    // Get the user ID to use to query pmpro membership info.
+    $user_id = get_current_user_id();
+    
+    // Query the relevant pmpro user info.
+    $member = $wpdb->get_results( $wpdb->prepare(
+      "SELECT id, membership_id, status, startdate, enddate
+      FROM {$wpdb->prefix}pmpro_memberships_users
+      WHERE user_id = %d
+      ORDER BY id DESC 
+      LIMIT 2",
+      $user_id
+    ) );
+
+    // Set the order start and end dates.
+    if ( $member && is_array( $member ) ) {
+      foreach( $member as $index => $object ) {
+        if ( $index === 0 && isset( $object->startdate ) ) $new_order_startdate = $object->startdate;
+        elseif ( $index === 1 && isset( $object->enddate ) ) $old_order_enddate = $object->enddate;
+      }
+    }
+
+    if ( !$old_order_enddate ) { // New application: no previous order on file.
       if ( strpos( $message, 'payment' ) !== false ) {
         $replace_with = '
           <p>
@@ -235,26 +235,61 @@ function custom_pmpro_confirmation_message($message, $invoice) {
         $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
         return $message;
       } 
-    } else {
-      global $wpdb;
+    } else { // Applicant has at least one previous order: this is either a renewal, a change in membership, or a change in membership status (e.g., the confirmation of a new membership being activated).
+      // Create DateTime objects.
+      $start = new DateTime($new_order_startdate);
+      $end = new DateTime($old_order_enddate);
 
-      // Check if this checkout is for a renewal: get the last subscription's enddate and compare it to today.
-      $user_id = get_current_user_id();
-      $subscription = $wpdb->get_row( $wpdb->prepare(
-        "SELECT enddate
-        FROM {$wpdb->prefix}pmpro_subscriptions
-        WHERE user_id = %d
-          AND status = 'cancelled'
-        ORDER BY enddate DESC 
-        LIMIT 1",
-        $user_id
-      ) );
-      $subscription_enddate = $subscription && isset( $subscription->enddate ) ? explode( ' ', $subscription->enddate )[0] : 0;
-      $current_date = date( 'Y-m-d', time() );
-      
-      if ( $subscription_enddate >= $current_date ) { // This is a renewal.
-        $replace_with = '<p>Thank you for submitting the application to renew your membership with us.</p><p>Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership.</p><p>Please remit the annual fee via check or Zelle within seven calendar days to ensure that your membership remains active.</p><div class="pmpro_message pmpro_alert">We are waiting for your payment to be delivered.</div>';
+      // Calculate the difference.
+      $interval = $start->diff($end);
 
+      // If the new order's start date is fewer than thirty days from the old order's end date: renewal.
+      if ( $interval->days <= 30 && $start <= $end ) {
+        $payment_instructions = pmpro_getOption('instructions') ?? ''; 
+
+        $replace_with = '
+          <p>
+            Thank you for submitting the application to renew your membership with us.
+          </p>
+          <p>
+            Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership. (You may need to refresh your browser to gain access.)
+          </p>
+          <p>
+            Please remit the annual fee within seven calendar days to ensure that your membership remains active.
+          </p>
+        ';
+
+        // Check if the current user has any membership: needs to stay active for renewals while payment is pending.
+          if ( !pmpro_hasMembershipLevel() ) {
+            $latest_id = $wpdb->get_var( $wpdb->prepare(
+              "
+              SELECT MAX(id)
+              FROM {$wpdb->prefix}pmpro_memberships_users
+              WHERE user_id = %d
+              ",
+              $user_id
+            ) );
+
+            // Update the membership status of the latest row if its current status is "review"
+            $updated = $wpdb->update(
+                $wpdb->prefix . 'pmpro_memberships_users', // Table name
+                array(
+                    'status' => 'active', // New status value
+                ),
+                array(
+                    'id' => $latest_id, // Target the latest row based on ID
+                    'status' => 'review', // Only update if the current status is 'review'
+                ),
+                array(
+                    '%s' // Data format for 'status'
+                ),
+                array(
+                    '%d', '%s' // Data formats for 'id' and 'status'
+                )
+            );
+          }
+
+        // Update the invoice to reflect a pending payment.
         add_action('wp_footer', function() {
           ?>
             <script>
@@ -288,12 +323,14 @@ function custom_pmpro_confirmation_message($message, $invoice) {
         });
 
         return $replace_with;
-      } else if ( strpos($message, 'active') !== false ) {
-        $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome you to the club!</p>';
+      } else { // A new membership has been activated.
+        if ( strpos($message, 'active') !== false ) {
+          $replace_with = '<p>Your application has been approved and your payment processed. Your membership is now active, and we welcome you to the club!</p>';
 
-        // Replace the first <p> tag with the activation message
-        $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
-        return $message;
+          // Replace the first <p> tag with the activation message
+          $message = preg_replace('/<p>.*?<\/p>/', $replace_with, $message, 1);
+          return $message;
+        }
       }
     }
   }
@@ -401,7 +438,6 @@ function fix_header_spacing() {
   if ( preg_match( '#^/groups/([^/]+)(?:/(.*))?$#', $_SERVER['REQUEST_URI'] ) ) {
     echo '
       <style>
-        /* Ian wuz ere*/
         @media all and (width >= 1024px) {
           .elementor-container > .elementor-column > .elementor-widget-wrap > .elementor-element > .elementor-widget-container > .gp-element-post-title > .gp-post-title {
             padding-top: 5rem;
@@ -428,11 +464,19 @@ add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
 
 // Add the Zelle payment-option instructions to the checkout page.
 function add_payment_option_tabs_before_payment() {
+  $payment_instructions = pmpro_getOption('instructions') ?? ''; 
+  $check_payment_instructions = $payment_instructions ? explode( '<div class="pmpro_divider"></div>', $payment_instructions )[0] : '';
+  $zelle_payment_instructions = $payment_instructions ? explode( '<div class="pmpro_divider"></div>', $payment_instructions )[1] : '';
+
+  // Escape PHP variable for JavaScript
+  $zelle_payment_instructions_escaped = json_encode(wp_kses_post($zelle_payment_instructions));
   ?>
     <script type="text/javascript">
+      const zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
       jQuery(document).ready(function($) {
         // Ensure the fieldset is loaded before applying changes.
         if ($('#pmpro_payment_information_fields').length) {
+
           // Create the tabs structure.
           const tabsHtml = `
               <div class="payment-tabs">
@@ -452,17 +496,16 @@ function add_payment_option_tabs_before_payment() {
                 </legend>
                 <div class="pmpro_form_fields">
                   <div class="pmpro_form_field pmpro_zelle_instructions pmpro_checkout">
-                    <p class="payment-instructions">To pay via Zelle, you must have an account at a bank that supports Zelle.</p>
-                    <p class="payment-instructions">If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.</p>
-                    <ul>
-                      <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
-                      <li><strong>NB:</strong> Please include your name in the payment's notes field.</li>
-                    </ul>
+                    ${zellePaymentInstructions}
                   </div>
                 </div>
+                <div class="pmpro_divider"></div>
               </div>
             </div>
           `;
+
+          // Remove zelle payment info from the check-info card.
+          $('.payment-instructions_zelle').hide();
 
           // Add classes to the check-payment info card.
           $('.pmpro_card').addClass('payment-option check active');
@@ -496,63 +539,20 @@ function add_payment_option_tabs_before_payment() {
 }
 add_action('wp_head', 'add_payment_option_tabs_before_payment');
 
-// Add the Zelle payment-option instructions to the application-confirmation page (path: "/membership-checkout/membership-confirmation/?pmpro_level={level}").
+// Add the Zelle payment-option instructions header to the application-confirmation page (path: "/membership-checkout/membership-confirmation/?pmpro_level={level}").
 function add_payment_option_instructions_after_submission() {
   // Both the regular checkout and renewal processes redirect to this page.
   if ( is_page( 'membership-confirmation' ) ) { ?>
     <script type="text/javascript">
-      const zelleHtml = `
-        <div class="pmpro_divider"></div>
-        <div id="pmpro_order_single-instructions_zelle">
-          <h3 class="pmpro_font-large">
-            Payment Instructions: Zelle					
-          </h3>
-          <div class="pmpro_payment_instructions">
-            <p>
-              To pay via Zelle, you must have an account at a bank that supports Zelle.<br>
+      jQuery(document).ready(function($) {
+        if ($('.payment-instructions_zelle').length) {
+          const paymentTitle = `
+            <h3 class="pmpro_font-large">
+						  Payment Instructions: Zelle
+            </h3>
+          `;
 
-              If you do, you may open your bank's mobile app or website, find the Zelle payment option (typically under “Send Money” or “P2P Payments”), and enter the recipient's email address and the amount to be paid.
-            </p>
-            <p class="payment-instructions">
-              <ul>
-                <li>Recipient's email address: <strong>veloraptors@gmail.com</strong>.</li>
-                <li><strong>NB</strong>: Please include your name in the payment's notes field.</li>
-              </ul>
-            </p>
-          </div>
-        </div>
-      `;
-      const checkHtml = `
-        <div class="pmpro_divider"></div>
-        <div id="pmpro_order_single-instructions">
-          <h3 class="pmpro_font-large">
-            Payment Instructions: Check					
-          </h3>
-          <div class="pmpro_payment_instructions">
-            <p>
-              Please make a check in the amount of the membership fee payable to <u>VeloRaptors</u> and mail it to the following address:
-            </p>
-            <p class="payment-instructions">
-              Kathy Tate<br>
-              5333 Terra Granada Dr., #4B<br>
-              Walnut Creek, CA 94595
-            </p>
-          </div>
-        </div>
-      `;
-
-      jQuery(document).ready($ => {
-        // Target the receipt after regular checkout.
-        if ($('#pmpro_order_single-instructions').length) {
-
-          // Add the Zelle instructions under the pay-by-check instructions.
-          $('#pmpro_order_single-instructions').after(zelleHtml);
-        } else { // On a renewal's confirmation page: add both sets of instructions.          
-          if ($('.pmpro_card_content').length) {
-            const html =  checkHtml + zelleHtml + '<div class="pmpro_divider"></div>';
-  
-            $('.pmpro_card_content').first().children().eq(1).after(html);
-          }
+          $('.payment-instructions_zelle').before(paymentTitle);
         }
       });
     </script>
@@ -566,7 +566,7 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
-// // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which undesirable.)
+// // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which is undesirable.)
 // require_once get_stylesheet_directory() . '/class.pmprogateway_zelle.php';
 
 // // View the Elementor Items widget's tax query.
@@ -582,15 +582,29 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 // }
 // add_action('pre_get_posts', 'exclude_archive_public_tag');
 
-// // A method for echoing content to the footer, used to debug.
+// A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
-//   error_log( 'the current time: ' . time() );
-//   error_log( 'the curernt time formatted: ' . date('Y-m-d', time() ));
-// });
+// $membership_level = pmpro_getMembershipLevelForUser();
+
+//   // Check if the user has a membership level
+//   if ( !empty($membership_level) ) {
+//       // Log the membership level object
+//       error_log("Membership level object for user: " . print_r($membership_level, true));
+
+//       // Convert the timestamps to readable date formats
+//       $start_date = date("Y-m-d H:i:s", $membership_level->startdate);
+//       $end_date = date("Y-m-d H:i:s", $membership_level->enddate);
+
+//       // Output the converted dates
+//       error_log("Start Date: " . $start_date);
+//       error_log("End Date: " . $end_date);
+//   } else {
+//       error_log("User does not have a membership level.");
+// }});
 
 // // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
-//   if (strpos($hook_name, 'elementor') !== false) {
+//   if (strpos($hook_name, 'pmpro') !== false) {
 //     error_log("Triggered Hook: " . $hook_name);
 //   }
 // });
