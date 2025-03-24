@@ -133,9 +133,9 @@ function add_dynamic_menu_link($items, $args) {
 }
 add_filter('wp_nav_menu_items', 'add_dynamic_menu_link', 10, 2);
 
-// Remove the "Calendar" link from the left main menu when a member is logged in. (Logged-in nonmembers should still see the link.)
+// Remove the guest's "Calendar" link from the left main menu and the mobile menu when a paying member is logged in. (Logged-in non-members should still see the link.)
 function remove_calendar_link($items, $args) {
-  if ($args->menu === 'left-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel()) {
+  if ( $args->menu === 'left-main-menu' && is_user_logged_in() && pmpro_hasMembershipLevel() ) {
     // Find the last occurrence of <li.
     $lastLiPos = strrpos($items, '<li');
     
@@ -148,6 +148,24 @@ function remove_calendar_link($items, $args) {
         $items = substr($items, 0, $lastLiPos) . substr($items, $lastLiClosePos + 5);
       }
     }
+  } elseif ( $args->menu === 'mobile-menu' && is_user_logged_in() && pmpro_hasMembershipLevel() ) {
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true); // Suppress warnings from HTML parsing
+    $dom->loadHTML('<?xml encoding="utf-8" ?>' . $items);
+    libxml_clear_errors();
+
+    $xpath = new DOMXPath($dom);
+    $targetHref = '/events-public/';
+    $links = $xpath->query("//a[contains(@href, '$targetHref')]");
+
+    if ($links->length > 0) {
+      $firstCalendar = $links->item(0);
+      if ($firstCalendar) {
+        $firstCalendar->parentNode->parentNode->removeChild($firstCalendar->parentNode);
+      }
+    }
+
+    $items = preg_replace('/^<!DOCTYPE.+?>/', '', $dom->saveHTML());
   }
 
   return $items;
