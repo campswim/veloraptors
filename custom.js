@@ -10,8 +10,8 @@ if (typeof getTodaysDate === 'undefined') {
 }
 
 // Add RSVP links to all events in the Simple Calendar.
-if (typeof addRSVPLink === 'undefined') {
-  var addRSVPLink = () => {
+if (typeof addRSVPLinkDesktop === 'undefined') {
+  var addRSVPLinkDesktop = () => {
     if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
     
     // Add the RSVP link dynamically to the calendar.
@@ -30,9 +30,9 @@ if (typeof addRSVPLink === 'undefined') {
       const eventDetails = document.querySelectorAll('.simcal-event-details');
       let eventTitle = '', nodeTitle = '', day = '', dateFormatted = '', regexStartDate = '', regexEndDate = '';
 
-      // Add a click listener to all events.
+      // For viewports >= 487px: Add a click listener to all events.
       document.querySelectorAll('.simcal-events').forEach(element => {
-        element.addEventListener('click', event => {
+        element.addEventListener('click', event => {          
           eventTitle = event?.target?.innerText;
 
           // Get the event's day.
@@ -108,6 +108,72 @@ if (typeof addRSVPLink === 'undefined') {
   };
 }
 
+const addRSVPLinkMobile = () => {
+  document.querySelectorAll('.simcal-day-has-events').forEach(event => {
+    event.addEventListener('click', function() {
+      // Set up the MutationObserver to watch for the addition of the event bubble to the DOM.
+      const observer = new MutationObserver(mutationsList => {
+        mutationsList.forEach(mutation => {
+          // Check if .simcal-event-bubble is added to the DOM.
+          mutation.addedNodes.forEach(node => {  
+            if (node.nodeType === 1 && node.matches('.simcal-event-bubble')) {
+              const clickedDay = node.querySelector('.simcal-events');
+              
+              if (clickedDay && clickedDay?.children) {
+                for (const child of clickedDay.children) {
+                  const eventTitle = child?.firstElementChild?.innerText.split(' ').join('-').toLowerCase();
+                  const eventDescription = child?.lastElementChild;
+
+                  if (eventTitle && eventDescription && eventDescription?.children) {                    
+                    for (const eventDetail of eventDescription.children) {
+                      if (eventDetail?.firstElementChild && eventDetail.firstElementChild?.className && eventDetail.firstElementChild.className.includes('simcal-event-start')) {
+                        const eventDates = eventDetail?.children;
+
+                        if (eventDates) {
+                          for (const date of eventDates) {
+
+                            // console.log({date});
+
+                            const startDate = date?.className.includes('simcal-event-start-date') ? date?.dataset?.eventStart : '';
+                            const endDate = date?.className.includes('simcal-event-end-date') ? date?.dataset?.eventStart : '';
+                            const startDateFormatted = startDate ? new Date(startDate * 1000)?.toISOString()?.split('T')[0] : '';
+                            const endDateFormatted = endDate ? new Date(endDate * 1000)?.toISOString()?.split('T')[0] : '';
+                            const eventPath = !endDateFormatted ? `/rsvp/?event=${eventTitle}&date=${startDateFormatted}` : `/rsvp/?event=${eventTitle}&date=${startDateFormatted}|${endDateFormatted}`;
+                            const rsvpUrl = window.location.origin + eventPath;
+                            const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
+                            const newChildNode = document.createElement('p');
+                            newChildNode.className = 'rsvp-link';
+                            newChildNode.innerHTML = htmlContent;
+                            
+                            eventDescription.appendChild(newChildNode);
+                            break;
+                          }
+                        }
+
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+              
+  
+              // Optionally disconnect the observer once it's done
+              observer.disconnect();
+            }
+          });
+        });
+      });
+  
+      // Start observing the entire document for added nodes
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,  // Watch the entire document subtree for changes
+      });
+    });
+  });       
+};
+
 // Correct the disabled attribute of the Simple Calendar based on the current months and start and end months. (The plugin doesn't do this accurately.)
 if (typeof correctCalNavButtons === 'undefined') {
   var correctCalNavButtons = () => {
@@ -155,7 +221,7 @@ if (typeof correctCalNavButtons === 'undefined') {
   }
 }
 
-// Call addRSVPLink every time a user navigates between months to ensure that the right calendar is being referenced.
+// Call the add-RSVP-link function every time a user navigates between months to ensure that the right calendar is being referenced.
 if (typeof observeCurrentCalendarChanges === 'undefined') {
   var observeCurrentCalendarChanges = () => {
     const targetNode = document.querySelector('.simcal-current');
@@ -165,7 +231,8 @@ if (typeof observeCurrentCalendarChanges === 'undefined') {
     const observer = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
         if (mutation.attributeName === 'data-calendar-current') {
-          addRSVPLink();
+          addRSVPLinkDesktop();
+          addRSVPLinkMobile();
           correctCalNavButtons();
         }
       });
@@ -404,7 +471,8 @@ const formatLearnMoreButton = () => {
 
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
-  addRSVPLink();
+  addRSVPLinkDesktop();
+  addRSVPLinkMobile();
   observeCurrentCalendarChanges();
   tabRedirectAndScrollSupppression();
   hidePopularTag();
