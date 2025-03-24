@@ -9,7 +9,7 @@ if (typeof getTodaysDate === 'undefined') {
   };
 }
 
-// Add RSVP links to all events in the Simple Calendar.
+// Add RSVP links to all events in the Simple Calendar: viewport >= 467px.
 if (typeof addRSVPLinkDesktop === 'undefined') {
   var addRSVPLinkDesktop = () => {
     if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
@@ -108,6 +108,7 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
   };
 }
 
+// Add RSVP links to all events in the Simple Calendar: viewport < 467px.
 const addRSVPLinkMobile = () => {
   document.querySelectorAll('.simcal-day-has-events').forEach(event => {
     event.addEventListener('click', function() {
@@ -131,9 +132,6 @@ const addRSVPLinkMobile = () => {
 
                         if (eventDates) {
                           for (const date of eventDates) {
-
-                            // console.log({date});
-
                             const startDate = date?.className.includes('simcal-event-start-date') ? date?.dataset?.eventStart : '';
                             const endDate = date?.className.includes('simcal-event-end-date') ? date?.dataset?.eventStart : '';
                             const startDateFormatted = startDate ? new Date(startDate * 1000)?.toISOString()?.split('T')[0] : '';
@@ -156,19 +154,18 @@ const addRSVPLinkMobile = () => {
                   }
                 }
               }
-              
-  
-              // Optionally disconnect the observer once it's done
+                
+              // Disconnect the observer once it's done.
               observer.disconnect();
             }
           });
         });
       });
   
-      // Start observing the entire document for added nodes
+      // Start observing the entire document for added nodes.
       observer.observe(document.body, {
         childList: true,
-        subtree: true,  // Watch the entire document subtree for changes
+        subtree: true,  // Watch the entire document subtree for changes.
       });
     });
   });       
