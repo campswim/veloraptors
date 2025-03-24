@@ -684,7 +684,7 @@ function create_event_rsvp_page( $event_title, $event_date ) {
 
   if ( !$event_date_page ) {
     $event_date_id = wp_insert_post(array(
-      'post_title'   => $event_title_formatted . ' | ' . $event_date_formatted,
+      'post_title'   => '<u>' . $event_title_formatted . '</u><br /><span class="rsvp-page_subtitle">' . $event_date_formatted . '</span>',
       'post_name'    => $event_date_slug,
       'post_status'  => 'publish',
       'post_type'    => 'rsvp',
