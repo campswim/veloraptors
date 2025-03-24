@@ -117,6 +117,14 @@ table.rsvp-attendees-list-table td {
   font-size: 0.8rem;
 }
 
+.gp-post-title {
+  text-align: center;
+}
+
+.rsvp-page_subtitle {
+  font-size: 2rem;
+}
+
 .rsvp-avatar {
   width: 1%;
 }
@@ -222,10 +230,6 @@ p.payment-instructions, .payment-instructions + ul li {
 .simcal-event-title {
   font-size: 0.8rem;
 }
-
-/* .simcal-day {
-  background-color: #E6BCCD;
-} */
 
 /* Reverse the colors of certain BuddyPress links that can't be changed via the BP settings. This is for readability. */
 .friendship-button.pending_friend.generic-button a, .friendship-button.not_friends.generic-button a, td.notification-description a {
