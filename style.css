@@ -122,7 +122,7 @@ table.rsvp-attendees-list-table td {
 }
 
 .rsvp-page_subtitle {
-  font-size: 2rem;
+  font-size: 1.7rem;
 }
 
 .rsvp-avatar {
@@ -279,6 +279,10 @@ p.payment-instructions, .payment-instructions + ul li {
   .rsvp-form div:last-child {
     width: 50%;
     margin: auto;
+  }
+
+  .rsvp-page_subtitle {
+    font-size: 1.7rem;
   }
 }
 

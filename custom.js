@@ -466,6 +466,41 @@ const formatLearnMoreButton = () => {
   }
 }
 
+const formatRsvpPageSubtitle = () => {
+  const rsvpPageSubtitleElement = document.querySelector('.rsvp-page_subtitle');
+  const rsvpPageSubtitle = rsvpPageSubtitleElement ? rsvpPageSubtitleElement?.innerHTML : '';
+  const rsvpDates = rsvpPageSubtitle ? rsvpPageSubtitle.split('to') : '';
+  const rsvpStartDate = rsvpDates && rsvpDates.length >= 1 ? rsvpDates[0].trim() : '';
+  const rsvpEndDate = rsvpDates && rsvpDates.length >= 2 ? rsvpDates[1].trim() : '';
+  
+  if (rsvpEndDate) {
+    // The format of the date arrays is [day, month, year].
+    const rsvpStartDateArray = rsvpStartDate ? rsvpStartDate.split(' ') : [];
+    const rsvpEndDateArray = rsvpEndDate ? rsvpEndDate.split(' ') : [];
+    
+    if (rsvpStartDateArray.length > 0 && rsvpEndDateArray.length > 0) {
+      const rsvpStartDay = rsvpStartDateArray[0];
+      const rsvpStartMonth = rsvpStartDateArray[1];
+      const rsvpStartYear = rsvpStartDateArray[2];
+      const rsvpEndDay = rsvpEndDateArray[0];
+      const rsvpEndMonth = rsvpEndDateArray[1];
+      const rsvpEndYear = rsvpEndDateArray[2];
+      let revisedRsvpDate = '';
+  
+      if (rsvpStartYear === rsvpEndYear) {
+        if (rsvpStartMonth === rsvpEndMonth) {
+          revisedRsvpDate = `${rsvpStartDay} - ${rsvpEndDay} ${rsvpStartMonth} ${rsvpStartYear}`;
+        } else {
+          revisedRsvpDate = `${rsvpStartDay} ${rsvpStartMonth} - ${rsvpEndDay} ${rsvpEndMonth} ${rsvpStartYear}`;
+        }
+      }
+  
+      rsvpPageSubtitleElement.innerHTML = revisedRsvpDate;
+    }
+  }
+};
+
+
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLinkDesktop();
@@ -479,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   repositionLoginButton();
   fixLoginMemberRedirect();
   formatLearnMoreButton();
+  formatRsvpPageSubtitle();
 });
 
 // Override the scroll animation when there are only two rows in the Items block.
