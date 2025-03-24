@@ -673,11 +673,6 @@ function create_event_rsvp_page( $event_title, $event_date ) {
   $event_date_formatted = format_event_date( $event_date_slug );
   $event_date_formatted = $event_end_date ? $event_date_formatted . ' to ' . format_event_date( $event_end_date ) : $event_date_formatted;
   $pronoun = $event_end_date ? ' from ' : ' on ';
-
-  error_log( 'event end date: ' . $event_end_date );
-  error_log( 'event date formatted: ' . $event_date_formatted );
-
-
   $event_date_page = get_posts( array( 
     'name' => $event_date_slug,
     'post_type'   => 'rsvp',
