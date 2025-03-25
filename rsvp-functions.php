@@ -518,7 +518,7 @@ function cleanup_old_rsvps() {
         'post_type'   => 'rsvp', // Custom post type 'rsvp'
         'post_status' => 'publish', // Only get published posts
       ) );
-      wp_trash_post( $event_page->ID );
+      if ( isset( $event_page->ID ) ) wp_trash_post( $event_page->ID );
 
     }
   }

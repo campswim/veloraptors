@@ -82,18 +82,59 @@ function log_pmpro_update_order( $order ) {
   if ( $order->gateway === 'check' || $order->gateway === 'zelle' ) {
     if ( $order->status === 'success' || $order->status === 'review' ) {
       // Activate the membership.
-      pmpro_changeMembershipLevel($order->membership_id, $order->user_id); 
+      pmpro_changeMembershipLevel($order->membership_id, $order->user_id);
 
-      // Get the expiration timestamp (one year from now)
-      $expiration_timestamp = strtotime('+1 year'); // Get the Unix timestamp
+      // Trigger the BuddyPress welcome email.
+      if (!empty( $order->user_id ) ) {
+        $user = get_userdata( $order->user_id );
+        $user_name = $user && isset( $user->display_name ) ? $user->display_name : '';
+        $user_email = $user && isset( $user->user_email ) ? $user->user_email : '';
 
-      // Ensure the expiration timestamp is an integer (just for extra safety)
+        if ( $user_name && $user_email ) {
+          if ( function_exists( 'bp_send_email' ) ) {
+            // Get the BuddyPress welcome email.
+            $email = bp_get_email( 'core-user-activation' );
+            
+            // Check if email object is valid.
+            if ( !is_wp_error( $email ) ) {
+              // Get the contact-us page ID to create a link in the template.
+              $contact_us_page = get_page_by_path('contact-us');
+
+              // If the page exists, get its URL
+              if ( $contact_us_page ) $contact_us_url = $contact_us_page ? get_permalink($contact_us_page->ID) : ''; 
+              
+              // Prepare tokens for the email template
+              $tokens = array(
+                'user.display_name' => $user_name,
+                'site.name'         => get_bloginfo( 'name' ),
+                'profile.url'       => bp_members_get_user_url( $order->user_id ),
+                'lostpassword.url'  => wp_lostpassword_url(),
+                'contactus.url'     => $contact_us_url
+              );
+
+              // Send email using bp_send_email()
+              $sent = bp_send_email(
+                'core-user-activation',  // Email template type
+                $user_email,        // Recipient email address
+                array(
+                  'tokens' => $tokens  // Tokens to replace in the email template
+                )
+              );
+            }
+          } 
+        }
+      }
+
+      // Get the expiration timestamp (one year from now).
+      $expiration_timestamp = strtotime('+1 year');
+
+      // Ensure the expiration timestamp is an integer.
       $expiration_timestamp = (int) $expiration_timestamp;
 
-      // Format the expiration timestamp into MySQL-compatible datetime format
-      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp); // Force the timestamp to be treated as an integer.
+      // Format the expiration timestamp into MySQL-compatible datetime format.
+      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp);
             
-      // Update the expiration date in the `pmpro_memberships_users` table
+      // Update the expiration date in the `pmpro_memberships_users` table.
       $updated_rows = $wpdb->update(
         $wpdb->prefix . 'pmpro_memberships_users',
         array('enddate' => $expiration_date),
@@ -583,6 +624,12 @@ function my_pmpro_email_expiration_date_change( $days ) {
   return 15; //change this value to the number of days before the expiration date.
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
+
+// // Log emails being sent.
+// add_filter('wp_mail', function($args) {
+//   error_log( 'args from wp_mail hook: ' . print_r($args, true));
+//   return $args;
+// });
 
 // // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which is undesirable.)
 // require_once get_stylesheet_directory() . '/class.pmprogateway_zelle.php';
