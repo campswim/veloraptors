@@ -859,7 +859,7 @@ function generate_rsvp_form( $event_title, $event_date ) {
           ?>
             <tr class="rsvp-attendees-list-item">
               <td class="rsvp-avatar"><?php echo wp_kses_post( $user_avatar ); ?></td>
-              <?php if ( $user_profile_url ) : ?>
+              <?php if ( $user_profile_url && pmpro_hasMembershipLevel() ) : ?>
                 <td class="rsvp-user-name-container">
                   <a class="user-profile-anchor" href="<?php echo esc_url( $user_profile_url ); ?>" target="_blank" rel="noopener noreferrer">
                     <?php echo esc_html( $rsvp->name ); ?>
