@@ -432,9 +432,9 @@ function style_membership_required_page() {
   global $post;
 
   // Check if the user has access to the current post/page
-  $has_access = pmpro_has_membership_access($post->ID);
+  $has_access = isset( $post->ID ) ? pmpro_has_membership_access($post->ID) : null;
 
-  if ( !$has_access ) {
+  if ( $has_access !== null && !$has_access ) {
     echo '
       <style>
         .pmpro_card_actions {
