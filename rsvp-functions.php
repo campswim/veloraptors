@@ -28,7 +28,7 @@ add_action('after_setup_theme', 'create_rsvp_table');
 
 // Redirect a user to the RSVP page of the event after clicking the event's RSVP link.
 function handle_rsvp_redirect() {
-  if ( isset( $_GET['event'] ) && isset( $_GET['date'] ) ) {
+  if ( isset( $_GET['event'] ) && isset( $_GET['date'] ) ) {    
     $event_title = sanitize_text_field( $_GET['event'] );
     $event_date = sanitize_text_field( $_GET['date'] );
 
@@ -640,7 +640,7 @@ function add_rsvp_links_to_event_page( $content ) {
 add_filter( 'the_content', 'add_rsvp_links_to_event_page' );
 
 // Create the RSVP page, child page, and grandchild page. (This structure is being used so that each event may have its own page. The URI of each event's page follows this pattern: /rsvp/{event-title}/{event-date}/.)
-function create_event_rsvp_page( $event_title, $event_date ) {  
+function create_event_rsvp_page( $event_title, $event_date ) {
   // Create the event page.
   $event_title_slug = sanitize_title( $event_title );
   $event_title_formatted = format_event_titles( $event_title_slug );
@@ -684,7 +684,7 @@ function create_event_rsvp_page( $event_title, $event_date ) {
 
   if ( !$event_date_page ) {
     $event_date_id = wp_insert_post(array(
-      'post_title'   => '<u>' . $event_title_formatted . '</u><br /><span class="rsvp-page_subtitle">' . $event_date_formatted . '</span>',
+      'post_title'   => $event_title_formatted . ' | ' . $event_date_formatted,
       'post_name'    => $event_date_slug,
       'post_status'  => 'publish',
       'post_type'    => 'rsvp',
@@ -702,6 +702,50 @@ function create_event_rsvp_page( $event_title, $event_date ) {
 
   return $event_date_id;
 }
+
+// Format the title of the RSVP page.
+function custom_event_title_formatting( $title, $post_id ) {
+  // Check if it's the event date page.
+  if ( get_post_type( $post_id ) === 'rsvp') {
+    if ( is_singular( 'rsvp' ) ) {      
+      if ( strpos( $title, '|' ) !== false ) {
+        $event_title = explode( ' | ', $title )[0];
+        $event_date = explode( ' | ', $title )[1];
+        $start_date = '';
+        $end_date = '';
+        $combined_start_end_date = '';
+
+        // Set the start and end dates.
+        if ( $event_date && strpos( $event_date, 'to' ) !== false ) {
+          $start_date = trim( explode( 'to', $event_date )[0] );
+          $end_date = trim( explode( 'to', $event_date )[1] );
+        }
+
+        // Format the date for events with different start and end dates.
+        if ( $start_date && $end_date ) {
+          $start_year = explode( ' ', $start_date )[2];
+          $start_month = explode( ' ', $start_date )[1];
+          $start_day = explode( ' ', $start_date )[0];
+          $end_year = explode( ' ', $end_date )[2];
+          $end_month = explode( ' ', $end_date )[1];
+          $end_day = explode( ' ', $end_date )[0];
+
+          if ( $start_year === $end_year) {
+            if ( $start_month === $end_month ) {
+              $combined_start_end_date = $start_day . ' - ' . $end_day . ' ' . $start_month . ' ' . $start_year;
+            } else {
+              $combined_start_end_date = $start_day . ' ' . $start_month + ' - ' . $end_day . ' ' . $end_month . ' ' . $start_year;
+            }
+          }
+        }
+
+        $title = '<u>' . esc_html( $event_title ) . '</u><br /><span class="rsvp-page_subtitle">' . ( $combined_start_end_date ? esc_html( $combined_start_end_date ) : esc_html( $event_date ) ) . '</span>';
+      }      
+    }
+  }
+  return $title;
+}
+add_filter('the_title', 'custom_event_title_formatting', 10, 2);
 
 // Generate the RSVP form and confirmation messages.
 function generate_rsvp_form( $event_title, $event_date ) {
