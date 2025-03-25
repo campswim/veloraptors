@@ -129,23 +129,25 @@ const addRSVPLinkMobile = () => {
                     for (const eventDetail of eventDescription.children) {
                       if (eventDetail?.firstElementChild && eventDetail.firstElementChild?.className && eventDetail.firstElementChild.className.includes('simcal-event-start')) {
                         const eventDates = eventDetail?.children;
+                        let startDate = '', endDate = '';
 
+                        // Set the start and end dates of the event.
                         if (eventDates) {
                           for (const date of eventDates) {
-                            const startDate = date?.className.includes('simcal-event-start-date') ? date?.dataset?.eventStart : '';
-                            const endDate = date?.className.includes('simcal-event-end-date') ? date?.dataset?.eventStart : '';
-                            const startDateFormatted = startDate ? new Date(startDate * 1000)?.toISOString()?.split('T')[0] : '';
-                            const endDateFormatted = endDate ? new Date(endDate * 1000)?.toISOString()?.split('T')[0] : '';
-                            const eventPath = !endDateFormatted ? `/rsvp/?event=${eventTitle}&date=${startDateFormatted}` : `/rsvp/?event=${eventTitle}&date=${startDateFormatted}|${endDateFormatted}`;
-                            const rsvpUrl = window.location.origin + eventPath;
-                            const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
-                            const newChildNode = document.createElement('p');
-                            newChildNode.className = 'rsvp-link';
-                            newChildNode.innerHTML = htmlContent;
-                            
-                            eventDescription.appendChild(newChildNode);
-                            break;
+                            if (date?.className.includes('simcal-event-start-date')) startDate = date?.dataset?.eventStart;
+                            else if (date?.className.includes('simcal-event-end-date')) endDate = date?.dataset?.eventStart;
                           }
+
+                          const startDateFormatted = startDate ? new Date(startDate * 1000)?.toISOString()?.split('T')[0] : '';
+                          const endDateFormatted = endDate ? new Date(endDate * 1000)?.toISOString()?.split('T')[0] : '';
+                          const eventPath = !endDateFormatted ? `/rsvp/?event=${eventTitle}&date=${startDateFormatted}` : `/rsvp/?event=${eventTitle}&date=${startDateFormatted}|${endDateFormatted}`;
+                          const rsvpUrl = window.location.origin + eventPath;
+                          const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
+                          const newChildNode = document.createElement('p');
+                          
+                          newChildNode.className = 'rsvp-link';
+                          newChildNode.innerHTML = htmlContent;
+                          eventDescription.appendChild(newChildNode);
                         }
 
                         break;
@@ -466,6 +468,7 @@ const formatLearnMoreButton = () => {
   }
 }
 
+// Format the RSVP page's title. (NOT IN USE: doing this on rsvp-functions.php, instead.)
 const formatRsvpPageSubtitle = () => {
   const rsvpPageSubtitleElement = document.querySelector('.rsvp-page_subtitle');
   const rsvpPageSubtitle = rsvpPageSubtitleElement ? rsvpPageSubtitleElement?.innerHTML : '';
@@ -500,7 +503,6 @@ const formatRsvpPageSubtitle = () => {
   }
 };
 
-
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
   addRSVPLinkDesktop();
@@ -514,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
   repositionLoginButton();
   fixLoginMemberRedirect();
   formatLearnMoreButton();
-  formatRsvpPageSubtitle();
+  // formatRsvpPageSubtitle();
 });
 
 // Override the scroll animation when there are only two rows in the Items block.
