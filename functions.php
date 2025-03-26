@@ -85,10 +85,10 @@ function log_pmpro_update_order( $order ) {
       pmpro_changeMembershipLevel($order->membership_id, $order->user_id);
 
       // Trigger the BuddyPress welcome email.
-      if (!empty( $order->user_id ) ) {
+      if ( !empty( $order->user_id ) ) {
         $user = get_userdata( $order->user_id );
-        $user_name = $user && isset( $user->display_name ) ? $user->display_name : '';
-        $user_email = $user && isset( $user->user_email ) ? $user->user_email : '';
+        $user_name = isset( $user->display_name ) ? $user->display_name : (isset( $user->data->display_name ) ? $user->data->display_name : '');
+        $user_email = isset( $user->user_email ) ? $user->user_email : (isset( $user->data->user_email ) ? $user->data->user_email : '');
 
         if ( $user_name && $user_email ) {
           if ( function_exists( 'bp_send_email' ) ) {
@@ -101,9 +101,9 @@ function log_pmpro_update_order( $order ) {
               $contact_us_page = get_page_by_path('contact-us');
 
               // If the page exists, get its URL
-              if ( $contact_us_page ) $contact_us_url = $contact_us_page ? get_permalink($contact_us_page->ID) : ''; 
+              $contact_us_url = $contact_us_page ? get_permalink($contact_us_page->ID) : ''; 
               
-              // Prepare tokens for the email template
+              // Prepare tokens for the email template.
               $tokens = array(
                 'user.display_name' => $user_name,
                 'site.name'         => get_bloginfo( 'name' ),
@@ -112,16 +112,15 @@ function log_pmpro_update_order( $order ) {
                 'contactus.url'     => $contact_us_url
               );
 
-              // Send email using bp_send_email()
               $sent = bp_send_email(
-                'core-user-activation',  // Email template type
-                $user_email,        // Recipient email address
+                'core-user-activation',  // Email template type.
+                $user_email,        // Recipient email address.
                 array(
-                  'tokens' => $tokens  // Tokens to replace in the email template
+                  'tokens' => $tokens  // Tokens to replace in the email template.
                 )
               );
-            }
-          } 
+            } 
+          }
         }
       }
 
@@ -311,10 +310,13 @@ function custom_pmpro_confirmation_message($message, $invoice) {
             Thank you for submitting the application to renew your membership with us.
           </p>
           <p>
-            Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership. (You may need to refresh your browser to gain access.)
+            Your account has been marked as pending while your payment is in transit. In the meantime, you may continue enjoying access to the benefits of membership.
           </p>
           <p>
-            Please remit the annual fee within seven calendar days to ensure that your membership remains active.
+            <strong>You may need to refresh your browser to restore access to the members-only sections of the site</strong>.
+          </p>
+          <p>
+            Please remit the annual fee within seven calendar days of your membership\'s expiration to ensure that your membership remains active.
           </p>
         ';
 
@@ -625,10 +627,64 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
+// // Test email functionality.
+// function test_wp_mail_function() {
+//   error_log('ian wuz ere.');
+
+//   $to = 'support@smozhem.com';
+//   $subject = 'Test Email from WordPress';
+//   $message = 'This is a test email to verify that wp_mail() is working correctly.';
+  
+//   // Correctly structured headers array
+//   $headers = array('Content-Type' => 'text/html; charset=UTF-8');
+
+//   // Send the email using wp_mail
+//   $mail_sent = wp_mail($to, $subject, $message, $headers);
+
+//   // Log the result from wp_mail
+//   if ($mail_sent) {
+//     error_log('Test email sent successfully using wp_mail().');
+//   } else {
+//     error_log('Failed to send test email using wp_mail().');
+//   }
+
+//   // // Use PHP mail() function directly
+//   // $headers_string = 'Content-Type: text/html; charset=UTF-8'; // For PHP mail()
+//   // if (mail($to, $subject, $message, $headers_string)) {
+//   //   error_log('Email sent successfully using PHP mail().');
+//   // } else {
+//   //   // Capture system error messages from PHP's mail function
+//   //   $error_message = error_get_last();
+//   //   if ($error_message) {
+//   //     error_log('PHP mail() error: ' . print_r($error_message, true));
+//   //   }
+//   // }
+// }
+// add_action('wp_footer', 'test_wp_mail_function');
+
 // // Log emails being sent.
 // add_filter('wp_mail', function($args) {
 //   error_log( 'args from wp_mail hook: ' . print_r($args, true));
 //   return $args;
+// });
+
+// add_action('wp_footer', function() {
+//   remove_all_filters('wp_mail');
+//   remove_all_filters('wp_mail_from');
+//   remove_all_filters('wp_mail_from_name');
+
+//   $to = 'support@smozhem.com';
+//   $subject = 'Test Email from WordPress';
+//   $message = 'This is a test email to verify that wp_mail() is working correctly.';
+//   $headers = ['Content-Type: text/html; charset=UTF-8'];
+
+//   $mail_sent = wp_mail($to, $subject, $message, $headers);
+
+//   if ($mail_sent) {
+//     error_log('Test email sent successfully using wp_mail().');
+//   } else {
+//     error_log('Failed to send test email using wp_mail().');
+//   }
 // });
 
 // // Add a custom gateway to PMPro's "Gateway" dropdown. (NRC: not in use: when in use, will allow for the creation of mulitple active subscriptions for one member, which is undesirable.)
