@@ -533,7 +533,9 @@ function add_payment_option_tabs_before_payment() {
   $zelle_payment_instructions_escaped = json_encode(wp_kses_post($zelle_payment_instructions));
   ?>
     <script type="text/javascript">
-      const zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
+      if (typeof zellePaymentInstructions === 'undefined') {
+        var zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
+      }
       jQuery(document).ready(function($) {
         // Ensure the fieldset is loaded before applying changes.
         if ($('#pmpro_payment_information_fields').length) {
