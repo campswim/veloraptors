@@ -11,16 +11,15 @@ add_action('wp_enqueue_scripts', 'magzine_child_enqueue_styles');
 
 // Enqueue the child theme's scripts.
 function enqueue_child_theme_scripts() {
-  if ( ! is_admin() ) {
+  if ( !is_admin() ) {
     wp_enqueue_script( 'custom-js', get_stylesheet_directory_uri() . '/custom.js', array('jquery'), '1.0', true );
-
     // Pass the current URI to the script
     wp_localize_script( 'custom-js', 'siteData', array(
-        'pageUri' => trim($_SERVER['REQUEST_URI'], '/')
+        'pageUri' => trim( $_SERVER['REQUEST_URI'], '/' )
     ) );
   }
 }
-add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts');
+add_action('wp_enqueue_scripts', 'enqueue_child_theme_scripts', 20);
 
 // Enqueue the child theme's scripts for the admin dashboard.
 function enqueue_child_theme_admin_scripts() {
@@ -28,8 +27,8 @@ function enqueue_child_theme_admin_scripts() {
     wp_enqueue_script('custom-admin-js', get_stylesheet_directory_uri() . '/custom-admin.js', array('jquery'), '1.0', true);
 
     // Optionally, localize admin script (if needed)
-    wp_localize_script('custom-admin-js', 'adminData', array(
-        'adminUri' => trim($_SERVER['REQUEST_URI'], '/')
+    wp_localize_script( 'custom-admin-js', 'adminData', array(
+        'adminUri' => trim( $_SERVER['REQUEST_URI'], '/' )
     ));
   }
 }
@@ -64,14 +63,12 @@ if (!current_user_can('administrator')) {
   add_filter('show_admin_bar', '__return_false');
 }
 
-// Change the status of a new PMPro order to "pending" if the payment type is "Check" or "Zelle".
+// Change the status of a new PMPro order to "pending".
 function update_order_status_to_pending( $user_id, $order ) {
   global $wpdb;
   
-  // Check if the payment method is 'Check or Zelle.' (The payment type when created via the site will always be "Check".)
-  if ( $order->payment_type === 'Check' || $order->payment_type === 'Zelle' ) { 
-    $order->updateStatus('pending'); // Mark the order as "pending" until the payment is received.
-  }
+  // Mark the order as "pending" until the payment is received.
+  $order->updateStatus('pending'); 
 }
 add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 
@@ -79,78 +76,76 @@ add_action('pmpro_after_checkout', 'update_order_status_to_pending', 10, 2);
 function log_pmpro_update_order( $order ) {
   global $wpdb;
 
-  if ( $order->gateway === 'check' || $order->gateway === 'zelle' ) {
-    if ( $order->status === 'success' || $order->status === 'review' ) {
-      // Activate the membership.
-      pmpro_changeMembershipLevel($order->membership_id, $order->user_id);
+  if ( $order->status === 'success' || $order->status === 'review' ) {
+    // Activate the membership.
+    pmpro_changeMembershipLevel($order->membership_id, $order->user_id);
 
-      // Trigger the BuddyPress welcome email.
-      if ( !empty( $order->user_id ) ) {
-        $user = get_userdata( $order->user_id );
-        $user_name = isset( $user->display_name ) ? $user->display_name : (isset( $user->data->display_name ) ? $user->data->display_name : '');
-        $user_email = isset( $user->user_email ) ? $user->user_email : (isset( $user->data->user_email ) ? $user->data->user_email : '');
+    // Trigger the BuddyPress welcome email.
+    if ( !empty( $order->user_id ) ) {
+      $user = get_userdata( $order->user_id );
+      $user_name = isset( $user->display_name ) ? $user->display_name : (isset( $user->data->display_name ) ? $user->data->display_name : '');
+      $user_email = isset( $user->user_email ) ? $user->user_email : (isset( $user->data->user_email ) ? $user->data->user_email : '');
 
-        if ( $user_name && $user_email ) {
-          if ( function_exists( 'bp_send_email' ) ) {
-            // Get the BuddyPress welcome email.
-            $email = bp_get_email( 'core-user-activation' );
+      if ( $user_name && $user_email ) {
+        if ( function_exists( 'bp_send_email' ) ) {
+          // Get the BuddyPress welcome email.
+          $email = bp_get_email( 'core-user-activation' );
+          
+          // Check if email object is valid.
+          if ( !is_wp_error( $email ) ) {
+            // Get the contact-us page ID to create a link in the template.
+            $contact_us_page = get_page_by_path('contact-us');
+
+            // If the page exists, get its URL
+            $contact_us_url = $contact_us_page ? get_permalink($contact_us_page->ID) : ''; 
             
-            // Check if email object is valid.
-            if ( !is_wp_error( $email ) ) {
-              // Get the contact-us page ID to create a link in the template.
-              $contact_us_page = get_page_by_path('contact-us');
+            // Prepare tokens for the email template.
+            $tokens = array(
+              'user.display_name' => $user_name,
+              'site.name'         => get_bloginfo( 'name' ),
+              'profile.url'       => bp_members_get_user_url( $order->user_id ),
+              'lostpassword.url'  => wp_lostpassword_url(),
+              'contactus.url'     => $contact_us_url
+            );
 
-              // If the page exists, get its URL
-              $contact_us_url = $contact_us_page ? get_permalink($contact_us_page->ID) : ''; 
-              
-              // Prepare tokens for the email template.
-              $tokens = array(
-                'user.display_name' => $user_name,
-                'site.name'         => get_bloginfo( 'name' ),
-                'profile.url'       => bp_members_get_user_url( $order->user_id ),
-                'lostpassword.url'  => wp_lostpassword_url(),
-                'contactus.url'     => $contact_us_url
-              );
-
-              $sent = bp_send_email(
-                'core-user-activation',  // Email template type.
-                $user_email,        // Recipient email address.
-                array(
-                  'tokens' => $tokens  // Tokens to replace in the email template.
-                )
-              );
-            } 
-          }
+            $sent = bp_send_email(
+              'core-user-activation',  // Email template type.
+              $user_email,        // Recipient email address.
+              array(
+                'tokens' => $tokens  // Tokens to replace in the email template.
+              )
+            );
+          } 
         }
       }
-
-      // Get the expiration timestamp (one year from now).
-      $expiration_timestamp = strtotime('+1 year');
-
-      // Ensure the expiration timestamp is an integer.
-      $expiration_timestamp = (int) $expiration_timestamp;
-
-      // Format the expiration timestamp into MySQL-compatible datetime format.
-      $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp);
-            
-      // Update the expiration date in the `pmpro_memberships_users` table.
-      $updated_rows = $wpdb->update(
-        $wpdb->prefix . 'pmpro_memberships_users',
-        array('enddate' => $expiration_date),
-        array('user_id' => $order->user_id),
-        array('%s'),
-        array('%d')
-      );
-    } elseif ( $order->status === 'pending' ) {
-      // Set the user's status to 'review' (restricts access until payment is received).
-      $wpdb->update(
-        "{$wpdb->prefix}pmpro_memberships_users",
-        array('status' => 'review'),
-        array('user_id' => $order->user_id, 'membership_id' => $order->membership_id),
-        array('%s'),
-        array('%d', '%d')
-      );
     }
+
+    // Get the expiration timestamp (one year from now).
+    $expiration_timestamp = strtotime('+1 year');
+
+    // Ensure the expiration timestamp is an integer.
+    $expiration_timestamp = (int) $expiration_timestamp;
+
+    // Format the expiration timestamp into MySQL-compatible datetime format.
+    $expiration_date = date('Y-m-d H:i:s', (int) $expiration_timestamp);
+          
+    // Update the expiration date in the `pmpro_memberships_users` table.
+    $updated_rows = $wpdb->update(
+      $wpdb->prefix . 'pmpro_memberships_users',
+      array('enddate' => $expiration_date),
+      array('user_id' => $order->user_id),
+      array('%s'),
+      array('%d')
+    );
+  } elseif ( $order->status === 'pending' ) {
+    // Set the user's status to 'review' (restricts access until payment is received).
+    $wpdb->update(
+      "{$wpdb->prefix}pmpro_memberships_users",
+      array('status' => 'review'),
+      array('user_id' => $order->user_id, 'membership_id' => $order->membership_id),
+      array('%s'),
+      array('%d', '%d')
+    );
   }
 }
 add_action('pmpro_update_order', 'log_pmpro_update_order', 10, 1);
@@ -533,7 +528,9 @@ function add_payment_option_tabs_before_payment() {
   $zelle_payment_instructions_escaped = json_encode(wp_kses_post($zelle_payment_instructions));
   ?>
     <script type="text/javascript">
-      const zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
+      if (typeof zellePaymentInstructions === 'undefined') {
+        var zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
+      }
       jQuery(document).ready(function($) {
         // Ensure the fieldset is loaded before applying changes.
         if ($('#pmpro_payment_information_fields').length) {
@@ -627,6 +624,21 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
+function add_custom_margin_to_post_content() {
+  if ( is_single() && !is_page() ) { // Checks if it's a post, not a page.
+    ?>
+    <style>
+      @media (width < 768px) {
+        .gp-element-post-content {
+          margin-top: 3rem;
+        }
+      }
+    </style>
+    <?php
+  }
+}
+add_action('wp_head', 'add_custom_margin_to_post_content');
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
@@ -648,17 +660,17 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 //     error_log('Failed to send test email using wp_mail().');
 //   }
 
-//   // // Use PHP mail() function directly
-//   // $headers_string = 'Content-Type: text/html; charset=UTF-8'; // For PHP mail()
-//   // if (mail($to, $subject, $message, $headers_string)) {
-//   //   error_log('Email sent successfully using PHP mail().');
-//   // } else {
-//   //   // Capture system error messages from PHP's mail function
-//   //   $error_message = error_get_last();
-//   //   if ($error_message) {
-//   //     error_log('PHP mail() error: ' . print_r($error_message, true));
-//   //   }
-//   // }
+//   // Use PHP mail() function directly
+//   $headers_string = 'Content-Type: text/html; charset=UTF-8'; // For PHP mail()
+//   if (mail($to, $subject, $message, $headers_string)) {
+//     error_log('Email sent successfully using PHP mail().');
+//   } else {
+//     // Capture system error messages from PHP's mail function
+//     $error_message = error_get_last();
+//     if ($error_message) {
+//       error_log('PHP mail() error: ' . print_r($error_message, true));
+//     }
+//   }
 // }
 // add_action('wp_footer', 'test_wp_mail_function');
 
@@ -703,25 +715,11 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 // }
 // add_action('pre_get_posts', 'exclude_archive_public_tag');
 
-// A method for echoing content to the footer, used to debug.
+// // A method for echoing content to the footer, used to debug.
 // add_action('wp_footer', function() {
-// $membership_level = pmpro_getMembershipLevelForUser();
-
-//   // Check if the user has a membership level
-//   if ( !empty($membership_level) ) {
-//       // Log the membership level object
-//       error_log("Membership level object for user: " . print_r($membership_level, true));
-
-//       // Convert the timestamps to readable date formats
-//       $start_date = date("Y-m-d H:i:s", $membership_level->startdate);
-//       $end_date = date("Y-m-d H:i:s", $membership_level->enddate);
-
-//       // Output the converted dates
-//       error_log("Start Date: " . $start_date);
-//       error_log("End Date: " . $end_date);
-//   } else {
-//       error_log("User does not have a membership level.");
-// }});
+//   echo '<!-- Ian wuz ere -->';
+//   error_log('Ian wuz ere');
+// });
 
 // // Log all available [PMPro] hooks.
 // add_action('all', function ($hook_name) {
@@ -739,16 +737,15 @@ add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_dat
 // // View the Items loop's tax query.
 // function exclude_archive_category_from_items_query( $args ) {
 //   $is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
-
 //   if ( !$is_ajax ) {
-
 //     error_log( 'the tax query when NOT ajax: ' . print_r( $args['tax_query'], true ) );
-
 //   } else {
-
 //     error_log( 'the tax query when it is ajax: ' . print_r( $args['tax_query'], true ) );
-
 //   }
 //   return $args;
 // }
 // add_filter( 'ghostpool_items_query', 'exclude_archive_category_from_items_query' );
+
+// add_action('wp_footer', function() {
+//   echo '<script>alert("Test Inline Script!");</script>';
+// });

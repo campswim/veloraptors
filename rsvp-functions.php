@@ -31,7 +31,6 @@ function handle_rsvp_redirect() {
   if ( isset( $_GET['event'] ) && isset( $_GET['date'] ) ) {    
     $event_title = sanitize_text_field( $_GET['event'] );
     $event_date = sanitize_text_field( $_GET['date'] );
-
     $page_slug = 'rsvp/' . $event_title . '/' . $event_date;
     $page = get_posts( array(
       'name' => $page_slug,
@@ -127,7 +126,7 @@ function handle_rsvp_submission() {
     $has_membership_boolean = pmpro_hasMembershipLevel();
     $user = wp_get_current_user();
     $membership_level = pmpro_getMembershipLevelForUser($user->ID);
-    $member_status = !$logged_in_boolean ? 'Non-member' : (!$has_membership_boolean ? 'Inactive Member' : $membership_level->name);
+    $member_status = !$logged_in_boolean ? 'Non-member' : ( !$has_membership_boolean ? 'Inactive Member' : $membership_level->name );
 
     // Sanitize the inputs.
     $name = sanitize_text_field( $_POST['rsvp_name'] );
@@ -157,9 +156,10 @@ function handle_rsvp_submission() {
       ) );
     }
 
-    $row_id = $wpdb->insert_id; // Returns the ID of the inserted row
+    // Get the ID of the inserted row.
+    $row_id = $wpdb->insert_id; 
 
-    // After inserting the RSVP data
+    // After inserting the RSVP data.
     $redirect_url = add_query_arg( array(
       'event_title' => urlencode( $event_title ),
       'event_date'  => urlencode( $event_date ),
@@ -652,7 +652,7 @@ function create_event_rsvp_page( $event_title, $event_date ) {
   ) );
   $event_title_id = null;
 
-  if (!$event_title_page) {
+  if ( !$event_title_page ) {
     $event_title_id = wp_insert_post(array(
       'post_title'   => $event_title_formatted,
       'post_name'    => $event_title_slug,
@@ -665,7 +665,7 @@ function create_event_rsvp_page( $event_title, $event_date ) {
   }
 
   // Create the event date page.
-  $event_end_date = strpos( $event_date, '|',  ) !== false ? explode( '|', $event_date )[1] : '';
+  $event_end_date = strpos( $event_date, '|' ) !== false ? explode( '|', $event_date )[1] : '';
   $event_start_date = $event_end_date ? explode( '|', $event_date )[0] : $event_date;
   $event_end_date_month = $event_end_date ? explode( '-', $event_end_date )[1] : '';
   $event_start_date_month = $event_end_date_month ? explode( '-', $event_start_date )[1] : '';
@@ -734,7 +734,7 @@ function custom_event_title_formatting( $title, $post_id ) {
             if ( $start_month === $end_month ) {
               $combined_start_end_date = $start_day . ' - ' . $end_day . ' ' . $start_month . ' ' . $start_year;
             } else {
-              $combined_start_end_date = $start_day . ' ' . $start_month + ' - ' . $end_day . ' ' . $end_month . ' ' . $start_year;
+              $combined_start_end_date = $start_day . ' ' . $start_month . ' - ' . $end_day . ' ' . $end_month . ' ' . $start_year;
             }
           }
         }

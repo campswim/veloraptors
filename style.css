@@ -117,7 +117,11 @@ table.rsvp-attendees-list-table td {
   font-size: 0.8rem;
 }
 
-.gp-post-title {
+.drag-drop .drag-drop-inside p {
+  color: #071021;
+}
+
+.gp-post-title, .gp-subtitle {
   text-align: center;
 }
 
@@ -157,8 +161,12 @@ table.rsvp-attendees-list-table td {
   display: block;
 }
 
-.pmpro_form_fieldset {
-  max-width: 100%;
+/* Fix the width of the PMPro form fieldset on the checkout page: the culprit is are the inputs. */
+.pmpro_form_field input {
+  width: 100%;
+}
+input[name="interests[]"] {
+  width: auto;
 }
 
 /* Allows the overlay to be fixed on scroll in mobile, too.*/
@@ -237,6 +245,11 @@ p.payment-instructions, .payment-instructions + ul li {
 }
 .friendship-button.pending_friend.generic-button a:hover, .friendship-button.not_friends.generic-button a:hover, td.notification-description a:hover {
     color: #D36555;
+}
+
+textarea.wpforms-field-required::placeholder {
+  color: lightgray;
+  font-weight: normal;
 }
 
 @media all and (min-width: 500px) {

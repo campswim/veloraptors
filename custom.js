@@ -13,98 +13,78 @@ if (typeof getTodaysDate === 'undefined') {
 if (typeof addRSVPLinkDesktop === 'undefined') {
   var addRSVPLinkDesktop = () => {
     if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
-    
-    // Add the RSVP link dynamically to the calendar.
-    const currentCalendar = document.querySelector('.simcal-current');
-    
-    if (currentCalendar) {
-      // Get today's date.
-      const today = getTodaysDate();
-      const [todaysMonth, todaysDay] = today?.split('/');
+    const monthMap = {
+      January: '01',
+      February: '02',
+      March: '03',
+      April: '04',
+      May: '05',
+      June: '06',
+      July: '07',
+      August: '08',
+      September: '09',
+      October: '10',
+      November: '11',
+      December: '12'
+    };
 
-      // Get the value of the 'data-calendar-current' attribute and convert it into month and year.
-      const dataEventsFirst = currentCalendar.getAttribute('data-calendar-current');
-      const date = new Date(parseInt(dataEventsFirst * 1000));
-      let month = date.getMonth() + 1; // Add 1 to get a 1-based month
-      const year = date.getFullYear();
-      const eventDetails = document.querySelectorAll('.simcal-event-details');
-      let eventTitle = '', nodeTitle = '', day = '', dateFormatted = '', regexStartDate = '', regexEndDate = '';
+    const observer = new MutationObserver(mutations => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'style') {
+          const target = mutation.target;
+          let eventTitle = '', eventDates = '';
+          
+          if (getComputedStyle(target).display === 'block'){           
+            for (const [index, child] of Object.entries(target?.children)) {
+              if (index === '0') eventTitle = child?.innerText;
+              else if (index === '1') eventDates = child?.innerText;
+            }
 
-      // For viewports >= 487px: Add a click listener to all events.
-      document.querySelectorAll('.simcal-events').forEach(element => {
-        element.addEventListener('click', event => {          
-          eventTitle = event?.target?.innerText;
+            if (eventTitle && eventDates) {
+              const eventStartDate = eventDates.split(' - ')[0] ? eventDates.split(' - ')[0].trim() : '';
+              const eventEndDate = eventDates.split(' - ')[1] ? eventDates.split(' - ')[1].trim() : '';
+              let startDay = '', startMonth = '', startYear = '';
+              let endDay = '', endMonth = '', endYear = '';
 
-          // Get the event's day.
-          day = event?.target?.parentElement?.parentElement?.previousElementSibling?.innerText;
-
-          if (eventTitle && day && (Number(todaysDay) <= Number(day) || Number(todaysMonth) < month)) {
-            if (day.length === 1) day = `0${day}`;
-            if (JSON.stringify(month).length === 1) month = `0${month}`;
-            eventTitle = eventTitle.split(' ').join('-').toLowerCase();            
-            dateFormatted = `${year}-${month}-${day}`;
-            regexStartDate = /(^|\s)simcal-event-start-date(\s|$)/;
-            regexEndDate = /(^|\s)simcal-event-end-date(\s|$)/;
-            
-            if (eventDetails) {
-              for (const event of eventDetails) {
-                let eventStartDate = '', eventEndDate = '';
-                nodeTitle = event?.children[0]?.innerText?.split(' ').join('-').toLowerCase() || '';
-                
-                if (eventTitle === nodeTitle) {                  
-                  // Get the event detail's dates for squaring with the chosen date.
-                  for (const node of event?.children) {
-                    const children = node?.children;
-                  
-                    if (children) {
-                      for (const childNode of children) {
-                        const classes = childNode?.className;
-  
-                        if (classes) {
-                          const attributes = childNode?.attributes;
-                        
-                          // Get the start date.
-                          if (regexStartDate.test(classes)) {
-                            eventStartDate = Array.from(attributes).find(attr => attr.name === 'content')?.textContent?.split('T')[0] || '';
-                          }
-
-                          // Get the end date.
-                          if (regexEndDate.test(classes)) {
-                            eventEndDate = Array.from(attributes).find(attr => attr.name === 'content')?.textContent?.split('T')[0] || '';
-                          }       
-                        }               
-                      }
-                    }
-
-                    
-                    // If the selected date fits within the start and end dates, 
-                    if (eventStartDate && (dateFormatted === eventStartDate || (eventEndDate && dateFormatted <= eventEndDate))) {
-                      const descriptionElement = event;
-    
-                      if (descriptionElement && !descriptionElement.querySelector('.rsvp-link')
-                      ) {
-                        // If the event spans multiple days there is an eventEndDate; if there is an event end-date, the day should be set to the event's start date.
-                        day = eventEndDate ? eventStartDate.split('-')[eventStartDate.split('-').length - 1] : day;
-                        endDay = eventEndDate ? eventEndDate.split('-')[eventEndDate.split('-').length - 1] : '';
-                        
-                        const eventPath = !eventEndDate ? `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}` : `/rsvp/?event=${eventTitle}&date=${year}-${month}-${day}|${eventEndDate}`;
-                        const rsvpUrl = window.location.origin + eventPath;
-                        const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
-                        const newChildNode = document.createElement('p');
-                        newChildNode.className = 'rsvp-link';
-                        newChildNode.innerHTML = htmlContent;
-                        descriptionElement.appendChild(newChildNode);
-                        break;
-                      }
-                    }
-                  }
-                }
+              if (eventStartDate) {
+                startDay = eventStartDate.split(',')[0] ? eventStartDate.split(',')[0].trim() : '';
+                startDay = startDay?.split(' ')[1] ? startDay.split(' ')[1].trim() : '';
+                startDay = startDay.length === 1 ? '0' + startDay : startDay;
+                startMonth = eventStartDate.split(',')[0] ? eventStartDate.split(',')[0].trim() : '';
+                startMonth = startMonth?.split(' ')[0] ? startMonth.split(' ')[0].trim() : '';
+                startMonth = monthMap[startMonth] ? monthMap[startMonth] : '';
+                startYear = eventStartDate.split(',')[1] ? eventStartDate.split(',')[1].trim() : '';
               }
+
+              if (eventEndDate) {
+                endDay = eventEndDate.split(',')[0] ? eventEndDate.split(',')[0].trim() : '';
+                endDay = endDay?.split(' ')[1] ? endDay.split(' ')[1].trim() : '';
+                endDay = endDay.length === 1 ? '0' + endDay : endDay;
+                endMonth = eventEndDate.split(',')[0] ? eventEndDate.split(',')[0].trim() : '';
+                endMonth = endMonth?.split(' ')[0] ? endMonth.split(' ')[0].trim() : '';
+                endMonth = monthMap[endMonth] ? monthMap[endMonth] : '';
+                endYear = eventEndDate.split(',')[1] ? eventEndDate.split(',')[1].trim() : '';
+              }
+
+              const eventPath = !eventEndDate ? `/rsvp/?event=${eventTitle}&date=${startYear}-${startMonth}-${startDay}` : `/rsvp/?event=${eventTitle}&date=${startYear}-${startMonth}-${startDay}|${endYear}-${endMonth}-${endDay}`;
+              const rsvpUrl = window.location.origin + eventPath;
+              const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
+              const newChildNode = document.createElement('p');
+              newChildNode.className = 'rsvp-link';
+              newChildNode.innerHTML = htmlContent;
+              target.appendChild(newChildNode);
             }
           }
-        });
+        }
       });
-    }
+    });
+
+    document.querySelectorAll(".simcal-event-details").forEach((element) => {
+      observer.observe(element, { attributes: true, attributeFilter: ["style"] });
+    });
+
+    
+    // Add the RSVP link dynamically to the calendar.
   };
 }
 
@@ -138,9 +118,20 @@ const addRSVPLinkMobile = () => {
                             else if (date?.className.includes('simcal-event-end-date')) endDate = date?.dataset?.eventStart;
                           }
 
-                          const startDateFormatted = startDate ? new Date(startDate * 1000)?.toISOString()?.split('T')[0] : '';
-                          const endDateFormatted = endDate ? new Date(endDate * 1000)?.toISOString()?.split('T')[0] : '';
-                          const eventPath = !endDateFormatted ? `/rsvp/?event=${eventTitle}&date=${startDateFormatted}` : `/rsvp/?event=${eventTitle}&date=${startDateFormatted}|${endDateFormatted}`;
+                          const options = { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' };
+
+                          const formatToPacificTime = (timestamp) => {
+                            if (!timestamp) return '';
+                            
+                            const date = new Intl.DateTimeFormat('en-CA', options).format(new Date(timestamp * 1000));
+                            return date.replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$1-$2'); // Converts MM-DD-YYYY to YYYY-MM-DD
+                          };
+
+                          const startDateFormatted = formatToPacificTime(startDate);
+                          const endDateFormatted = formatToPacificTime(endDate);
+                          const eventPath = !endDateFormatted 
+                            ? `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}`
+                            : `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}|${encodeURIComponent(endDateFormatted)}`;                          
                           const rsvpUrl = window.location.origin + eventPath;
                           const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
                           const newChildNode = document.createElement('p');
@@ -459,7 +450,8 @@ const formatLearnMoreButton = () => {
   if (window.location.pathname === '/') {
     document.querySelectorAll('.gp-button').forEach(button => {
       if (button?.textContent === 'Learn More') {
-        button.style.width = '25rem';
+
+        button.style.width = '17rem';
         button.style.fontSize = '2rem';
         button.style.fontWeight = 'bolder';
         button.style.padding = '2rem';
