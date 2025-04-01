@@ -73,7 +73,6 @@ Magzine Child by Nathan Cox
     - The guests' and members' calendar links are hidden and rendered programmatically based on member and logged-in status.
     - More appropriate (and grammatically/stylistically correct) messaging programmatically replaces the packaged messaging on application submission, application approval, and membership renewal.
     - SEO is dynamically added to each public page, while the "noindex" marker is dynamically added to each page restricted to members only.
-    - 
 
 3. Fixes
 
@@ -111,9 +110,4 @@ Magzine Child by Nathan Cox
 
 ## Review of the Zine Theme
 
-A powerful theme that generally works out of the box, Zine's WordPress setup is complicated, producing a steep learning curve, especially for less experienced WordPress developers and administrators, and its implementation is buggy.
-
-- The login/out feature, while sometimes buggy--resulting in poor formatting in mobile, the rendering of two login forms after a failed login attempt, and the failure to login from time to time without first clearing cookie--it works as expected.
-- Submitting tickets to the developer always resulted in a response, though those responses were typically restricted to an expression of gratitude and a promise to include a fix in the next update.
-- The checkout page's layout allowed several sections to overflow the viewport in mobile.
-- The Simple Calendar plugin's calendar's navigation arrows didn't render reliably and had to be modified.
+A powerful theme that generally works out of the box, Zine's WordPress setup is complicated, resulting in a steep learning curve (especially for less experienced WordPress developers and administrators), and its implementation is buggy, requiring several fixes and the submission of several service tickets.
