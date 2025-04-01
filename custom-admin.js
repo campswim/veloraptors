@@ -27,7 +27,7 @@ const rsvpCheckboxListener = () => {
   }
 }
 
-// Change the message showing on the Subscriptions tab of the Memberships dashboard from "Membership Ended" to "Pending Payment Receipt" for applications (orders) whose payment is pending.
+// Change the message showing on the Subscriptions tab of the Memberships dashboard from "Membership Ended" to "Pending Payment Receipt" for applications (orders) whose payment is pending. (Not in use, because the subscription workflow was determined to introduce more problems than it solved.)
 const subscriptionStatusPending = () => {
   const observer = new MutationObserver((mutationsList) => {
     for (const mutation of mutationsList) {

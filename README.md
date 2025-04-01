@@ -80,8 +80,8 @@ Magzine Child by Nathan Cox
   a. Styling
 
     - WPForms Lite plugin's text-area placeholder's font made the placeholder invisible, requiring custom CSS.
-    - Adding a membership level of "board member," but hiding it from being available for registration by site visitors required JavaScript and CSS.
-    - With only one membership level available for the club, the "Most Popular" tag automatically rendered on the level's registration card required CSS to hide it.
+    - Adding a membership level of "board member," but hiding it from being available for registration by site visitors required custom JavaScript and CSS.
+    - With only one membership level available for the club, the "Most Popular" tag automatically rendered on the level's registration card required custom JavaScript to hide it.
     - Elementor's image carousel's navigation arrows had to be hidden via custom CSS in mobile, because of the fact that the carousel's height, upon wich the arrows' location is based, is fixed and determined by the photo in the colleciton with the greatest height value.
     - Because of the complexity of BuddyPress's style-settings UI, some paragraph and anchor tags' color had to be addressed with custom CSS.
     - Sometimes Elementor doesn't update the background image of a post's banner. To fix this, the Background Type of the inner-section block of the post-title template (under GhostPool Templates) has to be set to default, saved, and then set back to Featured Image and duly save again.
@@ -93,6 +93,7 @@ Magzine Child by Nathan Cox
     - The styling of PMPro's no-access page required custom CSS to be correct, as did the header on the /groups/{group}/ page by BuddyPress.
     - To remove the extra-fields section, which contained sensitive information, from the pay-by-check confirmation email, automatically sent to the administrator, custom PHP was required.
     - To ensure that the post's content is legible, extra margin had to be added to the top of its container.
+    - The site's header, included in PMPro's login modal, which caused eggregious errors in the site's layout, required custom JavaScript to be removed, and the sign-in button that appeared in the login modal after a failed sign-in attempt had to be repositioned using custom JavaScript.
       
   b. Functionality
 
@@ -105,6 +106,8 @@ Magzine Child by Nathan Cox
     - To redirect site visitors to the homepage after logout, instead of the WP login page, custom PHP was required.
     - GhostPool's login_member_redirect key, in login-form.php, mistakenly adds the site's domain twice, rendering the value malformed, breaking the redirect and requiring custom PHP to fix it.
     - Because the built-in visibilty toggle doesn't work for the register and renew cards--to be rendered based on whether a visitor is an active member or not--on the contact-us page, custom PHP had to be written.
+    - The application of the "disabled" attribute of the Simple Calendar plugin's calendars had to be corrected with custom JavaScript.
+    - To get the corresponding Elementor tabs to open on redirect from another page--as well as to suppress the browser's default scroll to the anchor--custom JavaScript was required.
 
 ## Review of the Zine Theme
 
