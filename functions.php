@@ -469,7 +469,7 @@ add_action( 'wp_head', 'toggle_registration_card_on_contact_us' );
 function style_membership_required_page() {
   global $post;
 
-  // Check if the user has access to the current post/page
+  // Check if the user has access to the current post/page.
   $has_access = isset( $post->ID ) ? pmpro_has_membership_access($post->ID) : null;
 
   if ( $has_access !== null && !$has_access ) {
@@ -624,6 +624,7 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
+// To ensure that the post's content is legible, add extra margin to the top of its container.
 function add_custom_margin_to_post_content() {
   if ( is_single() && !is_page() ) { // Checks if it's a post, not a page.
     ?>

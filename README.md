@@ -66,7 +66,16 @@ Magzine Child by Nathan Cox
     - RSVPs and RSVP Pages dashboards
     - Button on the RSVPs dashboard to disable or enable the RSVP feature
 
-2. Fixes
+2. Custom Content
+
+    - A tab of instructions for paying via Zelle was added to PMPro's pay-by-check checkout page, the invoice page that succeeds it, and the renewal-confirmation page.
+    - The "Groups" link was programmatically added to the right main menu when a user is logged in and has a current membership.
+    - The guests' and members' calendar links are hidden and rendered programmatically based on member and logged-in status.
+    - More appropriate (and grammatically/stylistically correct) messaging programmatically replaces the packaged messaging on application submission, application approval, and membership renewal.
+    - SEO is dynamically added to each public page, while the "noindex" marker is dynamically added to each page restricted to members only.
+    - 
+
+3. Fixes
 
   a. Styling
 
@@ -80,13 +89,22 @@ Magzine Child by Nathan Cox
     - The word "password" on the login modal after a failed login attempt goes vertical, requiring custom CSS to behave properly.
     - PMPro's checkout page in mobile allowed several elements to overflow the viewport, requiring custom CSS to behave properly.
     - A section of both homepages on desktop feature a background image that stays fixed when the page is scrolled, but required custom CSS to allow for the same functionality on mobile.
-    - 
+    - BuddyPress's mobile menu required custom CSS to get its icons to be laid out correctly.
+    - The styling of PMPro's no-access page required custom CSS to be correct, as did the header on the /groups/{group}/ page by BuddyPress.
+    - To remove the extra-fields section, which contained sensitive information, from the pay-by-check confirmation email, automatically sent to the administrator, custom PHP was required.
+    - To ensure that the post's content is legible, extra margin had to be added to the top of its container.
       
   b. Functionality
 
     - Elementor's items widget's pagination, added by the GhostPool theme, would either disappear or fail to load the next set of posts, because of an improperly scoped variable in the items.php file; this error was reported, and the developer responded with a thank-you and the promise to fix the error in the theme's next update.
     -  Elementor's items wdiget, modified by the GhostPool theme, loads all posts on next-arrow click when there is more than one tax query present, because the query, stored as an attribute on the pagination's HTML element, was malformed. The fix, also in items.php, was to change `data-tax-query=' . $tax_query_json . '` to `data-tax-query="' . esc_attr( $tax_query_json ) . '"`, escaping the JSON properlyl. The error was fixed in the theme and reported to the developer, who againi replied with gratitude and a promise to include the fix in the theme's next update.
-    - 
+    - To get Elementor to dynamically render the home url, a shortcode had to be created and a custom PHP function to handle it.
+    - The WP admin bar would show for users other than the administrator, requiring custom PHP to change.
+    - Custom PHP was required to change the workflow of PMPro's checkout process, in order to maintain a new order's payment status as "pending," thereby restricting the applicant's access to the site, until the application could be approved and the payment processed.
+    - Custom PHP was required to set the expiration date of the membership not from the date of application, but rather from the date of the application's approval.
+    - To redirect site visitors to the homepage after logout, instead of the WP login page, custom PHP was required.
+    - GhostPool's login_member_redirect key, in login-form.php, mistakenly adds the site's domain twice, rendering the value malformed, breaking the redirect and requiring custom PHP to fix it.
+    - Because the built-in visibilty toggle doesn't work for the register and renew cards--to be rendered based on whether a visitor is an active member or not--on the contact-us page, custom PHP had to be written.
 
 ## Review of the Zine Theme
 
