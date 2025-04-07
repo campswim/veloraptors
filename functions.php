@@ -518,7 +518,7 @@ function amend_pmpro_email_body( $body ) {
 }
 add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
 
-// Add the Zelle payment-option instructions to the checkout page.
+// // Add the Zelle payment-option instructions to the checkout page. (NRC 20250407: not in use, becauuse payment instructions to be shown only after an application has been submitted.)
 function add_payment_option_tabs_before_payment() {
   $payment_instructions = pmpro_getOption('instructions') ?? ''; 
   $check_payment_instructions = $payment_instructions ? explode( '<div class="pmpro_divider"></div>', $payment_instructions )[0] : '';
@@ -531,6 +531,7 @@ function add_payment_option_tabs_before_payment() {
       if (typeof zellePaymentInstructions === 'undefined') {
         var zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
       }
+
       jQuery(document).ready(function($) {
         // Ensure the fieldset is loaded before applying changes.
         if ($('#pmpro_payment_information_fields').length) {
@@ -595,9 +596,26 @@ function add_payment_option_tabs_before_payment() {
     </script>
   <?php
 }
-add_action('wp_head', 'add_payment_option_tabs_before_payment');
+// add_action('wp_head', 'add_payment_option_tabs_before_payment');
 
-// Add the Zelle payment-option instructions header to the application-confirmation page (path: "/membership-checkout/membership-confirmation/?pmpro_level={level}").
+// Hide payment instructions on the checkout page.
+function hide_payment_instructions() {
+  if ( is_page( 'membership-checkout' ) ) {
+
+    // Replace payment instructions with note that instructions will be provided after submission of the application.
+    ?>
+      <script>
+          const paymentInstructions = document.querySelector('.pmpro_check_instructions');
+          if (paymentInstructions) {
+            paymentInstructions.innerHTML = '<p>Payment instructions will be provided after you\'ve submitted your application.</p>';
+          } 
+      </script>      
+    <?php
+  }
+}
+add_action('wp_footer', 'hide_payment_instructions');
+
+// Add the Zelle payment-option instructions header to the application-confirmation page (path: "/membership-checkout/membership-confirmation/?pmpro_level={level}"). (NRC 20250407: not in use.)
 function add_payment_option_instructions_after_submission() {
   // Both the regular checkout and renewal processes redirect to this page.
   if ( is_page( 'membership-confirmation' ) ) { ?>
@@ -616,7 +634,7 @@ function add_payment_option_instructions_after_submission() {
     </script>
   <?php } 
 }
-add_action('wp_head', 'add_payment_option_instructions_after_submission');
+// add_action('wp_head', 'add_payment_option_instructions_after_submission');
 
 // Change the number of days before the expiration date for the email notification.
 function my_pmpro_email_expiration_date_change( $days ) {
