@@ -643,7 +643,7 @@ add_filter( 'the_content', 'add_rsvp_links_to_event_page' );
 function create_event_rsvp_page( $event_title, $event_date ) {
   // Create the event page.
   $event_title_slug = sanitize_title( $event_title );
-  $event_title_formatted = format_event_titles( $event_title_slug );
+  $event_title_formatted = strtoupper( format_event_titles( $event_title_slug ) );
   $event_title_page = get_posts( array(
     'name' => $event_title_slug,
     'post_type'   => 'rsvp',
@@ -739,7 +739,7 @@ function custom_event_title_formatting( $title, $post_id ) {
           }
         }
 
-        $title = '<u>' . esc_html( $event_title ) . '</u><br /><span class="rsvp-page_subtitle">' . ( $combined_start_end_date ? esc_html( $combined_start_end_date ) : esc_html( $event_date ) ) . '</span>';
+        $title = esc_html( $event_title ) . '<br /><span class="rsvp-page_subtitle">' . ( $combined_start_end_date ? esc_html( $combined_start_end_date ) : esc_html( $event_date ) ) . '</span>';
       }      
     }
   }
