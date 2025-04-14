@@ -27,6 +27,11 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
       November: '11',
       December: '12'
     };
+    // Get today's date in Pacific Time
+    const now = new Date();
+    const pacificNow = new Date(
+      now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    ).toISOString().split('T')[0];
 
     const observer = new MutationObserver(mutations => {
       mutations.forEach((mutation) => {
@@ -34,7 +39,10 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
           const target = mutation.target;
           let eventTitle = '', eventDates = '';
           
-          if (getComputedStyle(target).display === 'block'){           
+          if (getComputedStyle(target).display === 'block'){
+            // Prevent duplicate links.
+            if (target.querySelector('.rsvp-link')) return;
+            
             for (const [index, child] of Object.entries(target?.children)) {
               if (index === '0') eventTitle = child?.innerText;
               else if (index === '1') eventDates = child?.innerText;
@@ -43,17 +51,25 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
             if (eventTitle && eventDates) {
               const eventStartDate = eventDates.split(' - ')[0] ? eventDates.split(' - ')[0].trim() : '';
               const eventEndDate = eventDates.split(' - ')[1] ? eventDates.split(' - ')[1].trim() : '';
-              let startDay = '', startMonth = '', startYear = '';
-              let endDay = '', endMonth = '', endYear = '';
+
+              let startDay = '', startMonth = '', startYear = '', startDate = '';
+              let endDay = '', endMonth = '', endYear = '', endDate = '';
 
               if (eventStartDate) {
-                startDay = eventStartDate.split(',')[0] ? eventStartDate.split(',')[0].trim() : '';
-                startDay = startDay?.split(' ')[1] ? startDay.split(' ')[1].trim() : '';
+                // Get the start day.
+                const match = eventStartDate?.match(/(\w+)\s(\d{1,2}),\s(\d{4})/);                
+                startDay = match ? match[2] : '';
                 startDay = startDay.length === 1 ? '0' + startDay : startDay;
-                startMonth = eventStartDate.split(',')[0] ? eventStartDate.split(',')[0].trim() : '';
-                startMonth = startMonth?.split(' ')[0] ? startMonth.split(' ')[0].trim() : '';
+
+                // Get the start month.
+                startMonth = match ? match[1] : '';
                 startMonth = monthMap[startMonth] ? monthMap[startMonth] : '';
-                startYear = eventStartDate.split(',')[1] ? eventStartDate.split(',')[1].trim() : '';
+                
+                // Get the start year.
+                startYear = match ? match[3] : '';
+
+                // Compile the start date.
+                startDate = `${startYear}-${startMonth}-${startDay}`;
               }
 
               if (eventEndDate) {
@@ -64,14 +80,22 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
                 endMonth = endMonth?.split(' ')[0] ? endMonth.split(' ')[0].trim() : '';
                 endMonth = monthMap[endMonth] ? monthMap[endMonth] : '';
                 endYear = eventEndDate.split(',')[1] ? eventEndDate.split(',')[1].trim() : '';
+
+                // Compile the end date.
+                endDate = `${endYear}-${endMonth}-${endDay}`;
               }
 
-              const eventPath = !eventEndDate ? `/rsvp/?event=${eventTitle}&date=${startYear}-${startMonth}-${startDay}` : `/rsvp/?event=${eventTitle}&date=${startYear}-${startMonth}-${startDay}|${endYear}-${endMonth}-${endDay}`;
+              // Don't add a link if the event's start date is in the past.
+              if (startDate < pacificNow) return;
+
+              const eventPath = !endMonth ? `/rsvp/?event=${eventTitle}&date=${startDate}` : `/rsvp/?event=${eventTitle}&date=${startDate}|${endDate}`;
+
               const rsvpUrl = window.location.origin + eventPath;
               const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
               const newChildNode = document.createElement('p');
               newChildNode.className = 'rsvp-link';
               newChildNode.innerHTML = htmlContent;
+
               target.appendChild(newChildNode);
             }
           }
@@ -82,9 +106,6 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
     document.querySelectorAll(".simcal-event-details").forEach((element) => {
       observer.observe(element, { attributes: true, attributeFilter: ["style"] });
     });
-
-    
-    // Add the RSVP link dynamically to the calendar.
   };
 }
 
