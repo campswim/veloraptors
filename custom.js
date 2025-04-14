@@ -111,6 +111,13 @@ if (typeof addRSVPLinkDesktop === 'undefined') {
 
 // Add RSVP links to all events in the Simple Calendar: viewport < 467px.
 const addRSVPLinkMobile = () => {
+  // Get today's date in Pacific Time
+  const now = new Date();
+  const pacificNow = new Date(
+    now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+  ).toISOString().split('T')[0];
+
+  // Add an event listener to each of the calendar's events.
   document.querySelectorAll('.simcal-day-has-events').forEach(event => {
     event.addEventListener('click', function() {
       // Set up the MutationObserver to watch for the addition of the event bubble to the DOM.
@@ -126,7 +133,11 @@ const addRSVPLinkMobile = () => {
                   const eventTitle = child?.firstElementChild?.innerText.split(' ').join('-').toLowerCase();
                   const eventDescription = child?.lastElementChild;
 
-                  if (eventTitle && eventDescription && eventDescription?.children) {                    
+                  if (eventTitle && eventDescription && eventDescription?.children) {
+                    // Prevent duplicate links.
+                    if (eventDescription.querySelector('.rsvp-link')) return;
+
+                    // Get the event's start and end dates.
                     for (const eventDetail of eventDescription.children) {
                       if (eventDetail?.firstElementChild && eventDetail.firstElementChild?.className && eventDetail.firstElementChild.className.includes('simcal-event-start')) {
                         const eventDates = eventDetail?.children;
@@ -139,17 +150,19 @@ const addRSVPLinkMobile = () => {
                             else if (date?.className.includes('simcal-event-end-date')) endDate = date?.dataset?.eventStart;
                           }
 
-                          const options = { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' };
-
                           const formatToPacificTime = (timestamp) => {
                             if (!timestamp) return '';
                             
+                            const options = { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' };
                             const date = new Intl.DateTimeFormat('en-CA', options).format(new Date(timestamp * 1000));
                             return date.replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$1-$2'); // Converts MM-DD-YYYY to YYYY-MM-DD
                           };
 
                           const startDateFormatted = formatToPacificTime(startDate);
                           const endDateFormatted = formatToPacificTime(endDate);
+
+                          if (startDateFormatted < pacificNow) return;
+                          
                           const eventPath = !endDateFormatted 
                             ? `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}`
                             : `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}|${encodeURIComponent(endDateFormatted)}`;                          
