@@ -469,7 +469,7 @@ add_action( 'wp_head', 'toggle_registration_card_on_contact_us' );
 function style_membership_required_page() {
   global $post;
 
-  // Check if the user has access to the current post/page.
+  // Check if the user has access to the current post/page
   $has_access = isset( $post->ID ) ? pmpro_has_membership_access($post->ID) : null;
 
   if ( $has_access !== null && !$has_access ) {
@@ -518,7 +518,7 @@ function amend_pmpro_email_body( $body ) {
 }
 add_filter( 'pmpro_email_body', 'amend_pmpro_email_body' );
 
-// // Add the Zelle payment-option instructions to the checkout page. (NRC 20250407: not in use, becauuse payment instructions to be shown only after an application has been submitted.)
+// Add the Zelle payment-option instructions to the checkout page. (NRC 20250407: not in use, because payment instructions are only to be shown after an application is submitted.)
 function add_payment_option_tabs_before_payment() {
   $payment_instructions = pmpro_getOption('instructions') ?? ''; 
   $check_payment_instructions = $payment_instructions ? explode( '<div class="pmpro_divider"></div>', $payment_instructions )[0] : '';
@@ -531,7 +531,6 @@ function add_payment_option_tabs_before_payment() {
       if (typeof zellePaymentInstructions === 'undefined') {
         var zellePaymentInstructions = <?php echo $zelle_payment_instructions_escaped; ?>;
       }
-
       jQuery(document).ready(function($) {
         // Ensure the fieldset is loaded before applying changes.
         if ($('#pmpro_payment_information_fields').length) {
@@ -642,7 +641,7 @@ function my_pmpro_email_expiration_date_change( $days ) {
 }
 add_filter( 'pmpro_email_days_before_expiration', 'my_pmpro_email_expiration_date_change' );
 
-// To ensure that the post's content is legible, add extra margin to the top of its container.
+// Add a custom margin to the post content on mobile devices to ensure that the content doesn't bleed into the banner above.
 function add_custom_margin_to_post_content() {
   if ( is_single() && !is_page() ) { // Checks if it's a post, not a page.
     ?>
@@ -657,6 +656,13 @@ function add_custom_margin_to_post_content() {
   }
 }
 add_action('wp_head', 'add_custom_margin_to_post_content');
+
+// Change the number of members displayed per page in the BuddyPress members directory.
+function my_custom_bp_members_per_page( $retval ) {
+  $retval['per_page'] = 48;
+  return $retval;
+}
+add_filter( 'bp_after_has_members_parse_args', 'my_custom_bp_members_per_page' );
 
 // // Test email functionality.
 // function test_wp_mail_function() {
