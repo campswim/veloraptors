@@ -60,10 +60,10 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
   display: none;
 }
 
-/* RSVP-related styling. */
 .rsvp-attendees-list-container {
   border: 1px solid;
 }
+
 .rsvp-form {
   display: flex;
   flex-direction: column;
@@ -74,16 +74,20 @@ body:not(.rtl) .gp-slide-in-menu .menu-item-has-children > .sub-menu .menu-item-
   background-color: #FFFFFF;
   box-shadow: 0px 4px 34px 0px rgba(0, 0, 0, 0.1);
 }
+
 .rsvp-form div {
   padding: 1rem;
 }
+
 .rsvp-form div:last-child {
   width: 90%;
   margin: auto;
 }
+
 .rsvp-form div:last-child input {
   width: 100%;
 }
+
 .rsvp-attendees-list-container {
   margin: 2rem 0;
   padding: 0 2rem;
@@ -98,23 +102,37 @@ table.rsvp-attendees-list-table {
   width: 100%;
   table-layout: fixed;
 }
+
 table.rsvp-attendees-list-table td {
   border: none;
   word-wrap: break-word;
   vertical-align: middle;
 }
+
 table.rsvp-attendees-list-table tr:nth-child(even) {
   background-color: whitesmoke;
 }
+
 table.rsvp-attendees-list-table td {
   font-size: 0.8rem;
 }
+
+.drag-drop .drag-drop-inside p {
+  color: #071021;
+}
+
+.gp-post-title, .gp-subtitle {
+  text-align: center;
+}
+
 .rsvp-page_subtitle {
   font-size: 1.7rem;
 }
+
 .rsvp-avatar {
   width: 1%;
 }
+
 .rsvp-dates-list-container {
   list-style: none;
   padding: 2rem;
@@ -124,6 +142,7 @@ table.rsvp-attendees-list-table td {
   background-color: #FFFFFF;
   box-shadow: 0px 4px 34px 0px rgba(0, 0, 0, 0.1);
 }
+
 .rsvp-dates-list-container li {
   padding: 1rem;
   border: 1px solid transparent;
@@ -132,18 +151,9 @@ table.rsvp-attendees-list-table td {
   margin: 1rem 0;
 }
 
-/* Fix BuddyPress anchor-tag styling. */
 .profile-fields.bp-tables-user a {
   text-decoration: underline;
   color: #FFFFFF;
-}
-.drag-drop .drag-drop-inside p {
-  color: #071021;
-}
-
-/* Align the GhostPool post-page title and subtitle in the center. */
-.gp-post-title, .gp-subtitle {
-  text-align: center;
 }
 
 /* Fix the word "Password" on the modal that appears after a failed login attempt. (The word "Password" is otherwise oriented vertically.) */
@@ -159,7 +169,7 @@ input[name="interests[]"] {
   width: auto;
 }
 
-/* Allow the overlay to be fixed on scroll in mobile, too.*/
+/* Allows the overlay to be fixed on scroll in mobile, too.*/
 .public-home-section-overlay > .elementor-background-overlay {
   background-attachment: fixed;
 }
@@ -214,13 +224,12 @@ p.payment-instructions, .payment-instructions + ul li {
   margin: 0;
 }
 
-/* Fix the layout of the main nav bar in mobile on the BuddyPress pages. */
 .bp-navs > .gp-main-nav-outer > .gp-main-nav-inner > .gp-main-nav-buttons.action {
   display: flex;
   justify-content: flex-end;
 }
 
-/* Ensure text inputs inside the fieldset don't overflow their container. */
+/* Ensure text inputs inside the fieldset have don't overflow their container. */
 .pmpro_form_input-text {
   width: 100%;
 }
@@ -238,13 +247,23 @@ p.payment-instructions, .payment-instructions + ul li {
     color: #D36555;
 }
 
-/* Fix the color of the placeholder in WPForms Lite's text area, so that the text is readable. */
+/* Change the contact-us form's placeholder's textarea's text color. */
 textarea.wpforms-field-required::placeholder {
   color: lightgray;
   font-weight: normal;
 }
 
-/* ---------------------------- Media Queries --------------------- */
+/* Change the link color of the pagination on the Members (list) page. */
+.bp-pagination .bp-pagination-links .pag-data span {
+  color: #FFFFFF;
+}
+.bp-pagination .bp-pagination-links .pag-data a {
+  color: #071021;
+}
+.bp-pagination .bp-pagination-links .pag-data a:hover {
+  color: #FFFFFF;
+}
+
 @media all and (min-width: 500px) {
   table.rsvp-attendees-list-table td {
     font-size: 1rem;
