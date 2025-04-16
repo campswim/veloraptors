@@ -664,6 +664,13 @@ function my_custom_bp_members_per_page( $retval ) {
 }
 add_filter( 'bp_after_has_members_parse_args', 'my_custom_bp_members_per_page' );
 
+// Start the PHP session earlier to ensure that iOS devices can access it.
+add_action('init', function() {
+  if (!headers_sent() && session_status() === PHP_SESSION_NONE) {
+    session_start();
+  }
+});
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
