@@ -671,6 +671,13 @@ add_action('init', function() {
   }
 });
 
+// Close the session at the end of the request to avoid blocking HTTP calls
+add_action('wp_loaded', function() {
+  if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+  }
+});
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
