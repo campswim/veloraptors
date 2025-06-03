@@ -678,6 +678,13 @@ add_action('wp_loaded', function() {
   }
 });
 
+// Exclude pmpro from object caching.
+add_action('init', function() {
+  if (function_exists('wp_cache_add_non_persistent_groups')) {
+    wp_cache_add_non_persistent_groups(['pmpro']);
+  }
+});
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
