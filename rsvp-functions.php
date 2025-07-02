@@ -16,6 +16,7 @@ function create_rsvp_table() {
     event_date DATE NOT NULL,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
+    plus_guests INT UNSIGNED NOT NULL DEFAULT 0,
     member_status VARCHAR(255) NOT NULL,
     email_hash CHAR(64) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -146,13 +147,14 @@ function handle_rsvp_submission() {
 
     if ( !$existing_rsvp ) {
       $wpdb->insert( $table_name, array(
-        'user_id'    => $user->ID,
-        'event_title' => $event_title,
-        'event_date'  => $event_date,
-        'name'        => $name,
-        'email'       => $email,
-        'member_status' => $member_status,
-        'email_hash' => $email_hashed
+        'user_id'      => $user->ID,
+        'event_title'  => $event_title,
+        'event_date'   => $event_date,
+        'name'         => $name,
+        'email'        => $email,
+        'member_status'=> $member_status,
+        'email_hash'   => $email_hashed,
+        'plus_guests'  => intval( $_POST['plus_guests'] )
       ) );
     }
 
@@ -457,7 +459,7 @@ function add_style_tag_for_link() {
 }
 add_action('wp_footer', 'add_style_tag_for_link');
 
-// Scehdule a cron-job cleanup of old RSVP events.
+// Schedule a cron-job cleanup of old RSVP events.
 function schedule_rsvp_cleanup() {
   // Clean up the db and any associated pages.
   if ( !wp_next_scheduled( 'rsvp_cleanup_event' ) ) {
@@ -470,6 +472,12 @@ function schedule_rsvp_cleanup() {
   }
 }
 add_action( 'wp', 'schedule_rsvp_cleanup' );
+
+// Ensure the RSVP cleanup event is scheduled and hooked.
+if ( ! wp_next_scheduled( 'rsvp_cleanup_event' ) ) {
+  wp_schedule_event( time(), 'daily', 'rsvp_cleanup_event' );
+}
+add_action( 'rsvp_cleanup_event', 'cleanup_old_rsvps' );
 
 // Remove old events from the db.
 function cleanup_old_rsvps() {
@@ -519,7 +527,27 @@ function cleanup_old_rsvps() {
         'post_status' => 'publish', // Only get published posts
       ) );
       if ( isset( $event_page->ID ) ) wp_trash_post( $event_page->ID );
+    }
+  }
 
+  // Clean up parent RSVP pages with no child pages
+  $parent_pages = get_posts( array(
+    'post_type'   => 'rsvp',
+    'post_status' => 'publish',
+    'post_parent' => 0,
+    'numberposts' => -1
+  ) );
+
+  foreach ( $parent_pages as $parent ) {
+    $children = get_posts( array(
+      'post_type'   => 'rsvp',
+      'post_status' => 'publish',
+      'post_parent' => $parent->ID,
+      'numberposts' => 1
+    ) );
+
+    if ( empty( $children ) ) {
+      wp_trash_post( $parent->ID );
     }
   }
 }
@@ -758,8 +786,8 @@ function generate_rsvp_form( $event_title, $event_date ) {
   
   // Remove the end date if it exists.
   $event_date = strpos( $event_date, '|' ) !== false ? explode( '|', $event_date )[0] : $event_date;
-  // Fetch existing RSVPs for the event.
-  $query_rsvps = "SELECT id, user_id, name, email, member_status FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s";
+  // Fetch existing RSVPs for the event, including plus_guests.
+  $query_rsvps = "SELECT id, user_id, name, email, member_status, plus_guests FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s";
   $rsvps = $wpdb->get_results( $wpdb->prepare( $query_rsvps, $event_title, $event_date ) );
 
   // Check if the user's email already exists for this event and date.
@@ -828,14 +856,31 @@ function generate_rsvp_form( $event_title, $event_date ) {
         <input type="email" name="rsvp_email" id="rsvp_email" value="<?php echo $user_email; ?>" required>
       </div>
       <div>
+        <label for="plus_guests">Additional Attendees</label>
+        <input type="number" name="plus_guests" id="plus_guests" min="0" max="10" value="0">
+      </div>
+      <div>
         <input type="submit" name="submit_rsvp" value="RSVP">
       </div>
     </form>
   <?php } ?>
+  <?php
+    $total_attendees = array_reduce($rsvps, function($carry, $rsvp) {
+      return $carry + intval($rsvp->plus_guests) + 1;
+    }, 0);
+  ?>
   <div class="rsvp-attendees-list-container">
-    <h4>List of Attendees (<?php echo esc_html( count( $rsvps ) ); ?>)</h4>
+    <h4>List of Attendees (<?php echo esc_html( $total_attendees ); ?>)</h4>
     <?php if ( $rsvps ) : ?>
       <table class="rsvp-attendees-list-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th scope="col" class="manage-column rsvp-status-col">Status</th>
+            <th>+ Guests</th>
+          </tr>
+        </thead>
         <tbody>
           <?php foreach ( $rsvps as $index => $rsvp ) : 
             $nicename = $wpdb->get_var( $wpdb->prepare( "SELECT user_nicename FROM $wpdb->users WHERE ID = %d", $rsvp->user_id ) );
@@ -872,11 +917,27 @@ function generate_rsvp_form( $event_title, $event_date ) {
               <?php else : ?>
                 </td>
               <?php endif; ?>
-              <?php echo isset( $rsvp->member_status ) && ( $rsvp->member_status === 'Member' || $rsvp->member_status === 'Board Member' ) ? '<td>Member</td>' : '<td>Guest</td>'; ?>
+              <td class="rsvp-status-col"><?php echo esc_html( $rsvp->member_status ); ?></td>
+              <td>
+                <?php if ( is_user_logged_in() && ( get_current_user_id() === intval( $rsvp->user_id ) || current_user_can( 'manage_options' ) ) ) : ?>
+                  <input
+                    name="additional attendees"
+                    type="number"
+                    min="0"
+                    class="inline-plus-guests-input"
+                    data-rsvp-id="<?php echo esc_attr( $rsvp->id ); ?>"
+                    value="<?php echo esc_attr( $rsvp->plus_guests ); ?>"
+                  >
+                <?php else : ?>
+                  <?php echo esc_html( intval( $rsvp->plus_guests ) ); ?>
+                <?php endif; ?>
+              </td>
             </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+      <?php
+    ?>
     <?php else : ?>
       <p class="rsvp-attendees-list-item">No RSVPs yet.</p>
     <?php endif; ?>
@@ -922,13 +983,13 @@ function rsvp_dashboard_page() {
   
   // Default sorting by event_date in ascending order.
   $sort_by = isset($_GET['sort_by']) ? sanitize_text_field($_GET['sort_by']) : 'event_date';
-  $sort_order = isset($_GET['sort_order']) && $_GET['sort_order'] == 'asc' ? 'asc' : 'desc';
+  $sort_order = isset($_GET['sort_order']) ? sanitize_text_field($_GET['sort_order']) : 'asc';
 
   // If the sort parameters are set, reload the page with the correct order.
   $current_url = admin_url('admin.php?page=rsvp-dashboard');
 
   // Get the state of the RSVP function, whether enabled or otherwise.
-  $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option is nothing is returned;
+  $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option if nothing is returned;
 
   // Save the RSVP toggle state in the database.
   if ( isset( $_POST['toggle_rsvp'] ) ) {
@@ -997,12 +1058,14 @@ function rsvp_dashboard_page() {
               $event_title_formatted = format_event_titles( $event_title );
               $event_date = $event->event_date;
               
-              // Query to get the RSVP data count for the specific event.
+              // Query to get the RSVP data for the specific event.
               $rsvp_data = $wpdb->get_results($wpdb->prepare(
                 "SELECT * FROM {$wpdb->prefix}rsvps WHERE event_title = %s AND event_date = %s",
                 $event_title, $event_date
               ));
-              $rsvp_count = count($rsvp_data);
+              $rsvp_count = array_reduce($rsvp_data, function($carry, $rsvp) {
+                return $carry + intval($rsvp->plus_guests) + 1;
+              }, 0);
               ?>
               <tr>
                 <td>
@@ -1084,6 +1147,11 @@ function rsvp_event_admin_page() {
     return;
   }
 
+  // Calculate total attendees including guests
+  $total_attendees = array_reduce($rsvp_data, function($carry, $rsvp) {
+    return $carry + intval($rsvp->plus_guests) + 1;
+  }, 0);
+
   $nonce = wp_create_nonce('delete_rsvps_nonce');
   $base_url = admin_url('admin.php?page=rsvp-event&event_title=' . urlencode($event_title) . '&event_date=' . urlencode($event_date));
   
@@ -1091,7 +1159,7 @@ function rsvp_event_admin_page() {
     <div class="wrap">
       <h1>Event Details</h1>
       <h2><?php echo esc_html($event_title_formatted); ?> | <?php echo esc_html(date('F j, Y', strtotime($event_date))); ?></h2>
-      <h4>List of Attendees</h4>
+      <h4>List of Attendees (<?php echo esc_html( $total_attendees ); ?>)</h4>
       <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
         <input type="hidden" name="action" value="delete_rsvps">
         <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
@@ -1122,6 +1190,7 @@ function rsvp_event_admin_page() {
                   <?php if ($order_by === 'member_status') { echo $new_order === 'asc' ? '▲' : '▼'; } ?>
                 </a>
               </th>
+              <th scope="col" class="manage-column">+ Guests</th>
             </tr>
           </thead>
           <tbody>
@@ -1146,6 +1215,17 @@ function rsvp_event_admin_page() {
                 </td>                
                 <td><?php echo esc_html( $rsvp->email ); ?></td>
                 <td><?php echo isset( $rsvp->member_status ) && ( $rsvp->member_status === 'Member' || $rsvp->member_status === 'Board Member' ) ? 'Member' : 'Guest'; ?></td>
+                <td>
+                  <input
+                    name="additional attendees"
+                    type="number"
+                    class="inline-plus-guests-input"
+                    data-rsvp-id="<?php echo esc_attr( $rsvp->id ); ?>"
+                    value="<?php echo esc_attr( $rsvp->plus_guests ); ?>"
+                    data-original-value="<?php echo esc_attr( $rsvp->plus_guests ); ?>"
+                  >
+                  <span class="rsvp-checkmark-wrapper" style="display:inline-block; width:1.5em; margin-left:0.25em;"></span>
+                </td>
               </tr>
             <?php endforeach; ?>
           </tbody>
@@ -1287,3 +1367,72 @@ function custom_calendar_link( $content ) {
   return $content;
 }
 add_filter('the_content', 'custom_calendar_link');
+
+// Enqueue the inline update script for AJAX guest count updates (front-end).
+function rsvp_enqueue_inline_update_script() {
+  // Only enqueue on RSVP pages (front-end).
+  if ( is_singular( 'rsvp' ) ) {
+    wp_enqueue_script(
+      'rsvp-inline-update',
+      get_stylesheet_directory_uri() . '/rsvp-inline-update.js',
+      array('jquery'),
+      null,
+      true
+    );
+
+    wp_localize_script( 'rsvp-inline-update', 'rsvpInline', array(
+      'ajax_url' => admin_url( 'admin-ajax.php' ),
+      'nonce'    => wp_create_nonce( 'rsvp_inline_nonce' ),
+    ) );
+  }
+}
+add_action( 'wp_enqueue_scripts', 'rsvp_enqueue_inline_update_script' );
+
+// Also enqueue the inline update script for the RSVP Dashboard in WP Admin.
+add_action( 'admin_enqueue_scripts', function() {
+  wp_enqueue_script(
+    'rsvp-inline-update',
+    get_stylesheet_directory_uri() . '/rsvp-inline-update.js',
+    array('jquery'),
+    null,
+    true
+  );
+  wp_localize_script( 'rsvp-inline-update', 'rsvpInline', array(
+    'ajax_url' => admin_url( 'admin-ajax.php' ),
+    'nonce'    => wp_create_nonce( 'rsvp_inline_nonce' ),
+  ));
+});
+
+// AJAX handler for updating plus_guests inline.
+add_action( 'wp_ajax_update_plus_guests', function() {
+  check_ajax_referer( 'rsvp_inline_nonce', 'nonce' );
+
+  $rsvp_id = intval( $_POST['rsvp_id'] );
+  $plus_guests = intval( $_POST['plus_guests'] );
+  $user_id = get_current_user_id();
+  $is_admin = current_user_can( 'manage_options' );
+
+  // Updated logic: allow admin to update any RSVP, or user to update their own.
+  if ( ! $rsvp_id || ( $user_id === 0 && ! $is_admin ) ) {
+    wp_send_json_error();
+  }
+
+  global $wpdb;
+  $table_name = $wpdb->prefix . 'rsvps';
+  $rsvp = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $rsvp_id ) );
+
+  if (
+    ! $rsvp ||
+    (
+      intval( $rsvp->user_id ) !== $user_id &&
+      ! $is_admin
+    )
+  ) {
+    wp_send_json_error();
+  }
+
+  $wpdb->update( $table_name, array(
+    'plus_guests' => $plus_guests
+  ), array( 'id' => $rsvp_id ) );
+  wp_send_json_success();
+});

@@ -103,19 +103,31 @@ table.rsvp-attendees-list-table {
   table-layout: fixed;
 }
 
+table.rsvp-attendees-list-table th,
 table.rsvp-attendees-list-table td {
   border: none;
   word-wrap: break-word;
   vertical-align: middle;
+  text-align: left;
 }
 
 table.rsvp-attendees-list-table tr:nth-child(even) {
   background-color: whitesmoke;
 }
 
+table.rsvp-attendees-list-table th,
 table.rsvp-attendees-list-table td {
   font-size: 0.8rem;
 }
+
+table .rsvp-status-col {
+  display: none;
+}
+
+table .inline-plus-guests-input {
+  width: 100%;
+}
+
 
 .drag-drop .drag-drop-inside p {
   color: #071021;
@@ -129,8 +141,8 @@ table.rsvp-attendees-list-table td {
   font-size: 1.7rem;
 }
 
-.rsvp-avatar {
-  width: 1%;
+.rsvp-avatar > img {
+  width: 75%;
 }
 
 .rsvp-dates-list-container {
@@ -273,7 +285,11 @@ textarea.wpforms-field-required::placeholder {
     border-right: 1px solid darkgray;
     width: 10%;
   }
-    #pmpro_login .pmpro_login_wrap .pmpro_card_content #loginform p.login-password {
+  .rsvp-avatar img {
+    width: 25%;
+  }
+
+  #pmpro_login .pmpro_login_wrap .pmpro_card_content #loginform p.login-password {
     display: grid;
   }
 }
@@ -281,6 +297,20 @@ textarea.wpforms-field-required::placeholder {
 @media all and (min-width: 768px) {
   table.rsvp-attendees-list-table td {
     font-size: 1.2rem;
+  }
+
+  /* Show the "Status" column on small viewports. */
+  table .rsvp-status-col {
+    display: table-cell;
+  }
+
+  table.rsvp-attendees-list-table th,
+  table.rsvp-attendees-list-table td {
+    font-size: 1.2rem;
+  }
+
+  table .inline-plus-guests-input {
+    width: 4rem;
   }
 }
 
