@@ -435,7 +435,6 @@ function add_rsvp_submenu_link( $items, $args ) {
               $calendar_item->parentNode->appendChild($newNode);
             }
           } else {
-            error_log('RefNode has no parent; cannot insert before it.');
             // Fallback: Append at the end if Calendar link isn't found.
             $members_submenu->appendChild($rsvp_submenu);
           }
@@ -1149,6 +1148,47 @@ function pass_rsvp_enabled_to_frontend() {
 }
 add_action('wp_head', 'pass_rsvp_enabled_to_frontend');
 
+// Register the add-rsvp page (for admins only).
+add_action( 'admin_menu', 'register_add_rsvp_submenu' );
+
+function register_add_rsvp_submenu() {
+  add_submenu_page(
+    null, // No parent; hidden from menu
+    'Add RSVP',
+    'Add RSVP',
+    'manage_options',
+    'add-rsvp',
+    'render_add_rsvp_page'
+  );
+}
+
+// Render the add-rsvp page (for admins only).
+function render_add_rsvp_page() {
+  if ( ! current_user_can( 'manage_options' ) ) {
+    wp_die( __( 'You are not allowed to access this page.' ) );
+  }
+
+  // Get event_id, event_title, and event_date from query string.
+  $event_id = isset($_GET['event_id']) ? sanitize_text_field($_GET['event_id']) : '';
+  $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
+
+  ?>
+  <div class="wrap add-rsvp">
+    <h1>Add RSVP</h1>
+    <div>
+      <h2><?php echo esc_html( $event_id ); ?> | <?php echo esc_html( $event_date ); ?></h2>
+    </div>
+    <form method="post" action="">
+      <label for="user_name">Username:</label>
+      <input type="text" id="user_name" name="user_name" required>
+      <label for="plus_guests">Number of Guests:</label>
+      <input type="number" id="plus_guests" name="plus_guests" min="0" value="0">
+      <input type="submit" name="submit_admin_rsvp" value="Add RSVP">
+    </form>
+  </div>
+  <?php
+}
+
 // Create the admin page for individual events.
 function rsvp_event_admin_page() {
   global $wpdb;
@@ -1188,6 +1228,17 @@ function rsvp_event_admin_page() {
     <div class="wrap">
       <h1>Event Details</h1>
       <h2><?php echo esc_html($event_title_formatted); ?> | <?php echo esc_html(date('F j, Y', strtotime($event_date))); ?></h2>
+      <?php if ( current_user_can('manage_options' ) ): ?>
+        <p>
+          <?php
+            // event_id: for this context, we use the current event's info.
+            // $event_id could be post ID or a unique identifier; here, use event_title and event_date as in the rest of the code.
+            $event_id = isset($event_title) ? $event_title : '';
+            // Add event_date as a query parameter as well.
+            echo '<a href="' . esc_url( admin_url( 'admin.php?page=add-rsvp&event_id=' . urlencode( $event_id ) . '&event_title=' . urlencode( $event_title ) . '&event_date=' . urlencode( $event_date ) ) ) . '" class="button">Add RSVP for Member</a>';
+          ?>
+        </p>
+      <?php endif; ?>
       <h4>List of Attendees (<?php echo esc_html( $total_attendees ); ?>)</h4>
       <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
         <input type="hidden" name="action" value="delete_rsvps">
@@ -1397,7 +1448,7 @@ function custom_calendar_link( $content ) {
 }
 add_filter('the_content', 'custom_calendar_link');
 
-// Enqueue the inline update script for AJAX guest count updates (front-end).
+// Enqueue the inline update script for AJAX guest-count updates (front-end).
 function rsvp_enqueue_inline_update_script() {
   // Only enqueue on RSVP pages (front-end).
   if ( is_singular( 'rsvp' ) ) {
@@ -1465,3 +1516,54 @@ add_action( 'wp_ajax_update_plus_guests', function() {
   ), array( 'id' => $rsvp_id ) );
   wp_send_json_success();
 });
+
+// Handle the admin add RSVP form submission.
+function handle_add_rsvp_form() {
+  if ( isset($_POST['submit_admin_rsvp']) && current_user_can('manage_options') ) {
+    // Validate and sanitize inputs
+    $user_name = sanitize_text_field( $_POST['user_name'] );
+    $user = get_user_by( 'login', $user_name );
+    if ( ! $user ) {
+      wp_die( 'User not found.' );
+    }
+    $user_id = $user->ID;
+
+    $event_id = isset($_POST['event_id']) ? sanitize_text_field($_POST['event_id']) : '';
+    // Remove: $event_date = isset($_POST['event_date']) ? sanitize_text_field($_POST['event_date']) : '';
+    $plus_guests = isset($_POST['plus_guests']) ? intval($_POST['plus_guests']) : 0;
+
+    // Retrieve event_title and event_date from the query string ($_GET)
+    $event_title = isset($_GET['event_title']) ? sanitize_text_field($_GET['event_title']) : $event_id;
+    $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
+
+    // Optionally, retrieve user email and name
+    $user_info = get_userdata($user_id);
+    $name = $user_info ? $user_info->display_name : '';
+    $email = $user_info ? $user_info->user_email : '';
+
+    // Determine member_status
+    $membership_level = function_exists('pmpro_getMembershipLevelForUser') ? pmpro_getMembershipLevelForUser($user_id) : null;
+    $member_status = !$user_id ? 'Non-member' : ( !$membership_level ? 'Inactive Member' : $membership_level->name );
+    $email_hashed = hash( 'sha256', strtolower( trim( $email ) ) );
+
+    // Insert RSVP into custom table
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'rsvps';
+    $wpdb->insert( $table_name, array(
+      'user_id'      => $user_id,
+      'event_title'  => $event_title,
+      'event_date'   => $event_date,
+      'name'         => $name,
+      'email'        => $email,
+      'member_status'=> $member_status,
+      'email_hash'   => $email_hashed,
+      'plus_guests'  => $plus_guests
+    ) );
+
+    // Redirect back to the event page in admin
+    $redirect_url = admin_url('admin.php?page=rsvp-event&event_title=' . urlencode($event_title) . '&event_date=' . urlencode($event_date));
+    wp_redirect($redirect_url);
+    exit;
+  }
+}
+add_action('admin_init', 'handle_add_rsvp_form');

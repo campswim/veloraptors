@@ -5,3 +5,14 @@
 input#select-all {
   margin-left: 0;
 }
+
+/* Style the add-rsvp form. */
+.add-rsvp form {
+  display: flex;
+  flex-direction: column;
+  max-width: 15rem;
+}
+.add-rsvp form input {
+  margin-bottom: 1rem;
+}
+
