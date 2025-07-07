@@ -884,8 +884,10 @@ function generate_rsvp_form( $event_title, $event_date ) {
         <input type="email" name="rsvp_email" id="rsvp_email" value="<?php echo $user_email; ?>" required>
       </div>
       <div>
-        <label for="plus_guests">Additional Attendees</label>
-        <input type="number" name="plus_guests" id="plus_guests" min="0" max="10" value="0">
+        <?php if ( function_exists( 'pmpro_hasMembershipLevel' ) && pmpro_hasMembershipLevel() ): ?>
+          <label for="plus_guests">Number of Guests</label>
+          <input type="number" name="plus_guests" id="plus_guests" min="0" />
+        <?php endif; ?>
       </div>
       <div>
         <input type="submit" name="submit_rsvp" value="RSVP">
