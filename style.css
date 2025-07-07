@@ -145,6 +145,11 @@ table .inline-plus-guests-input {
   width: 75%;
 }
 
+/* Remove the bullets from the Simple Calendar's event-details bubble. */
+.qtip-content li {
+  list-style: none;
+}
+
 .rsvp-dates-list-container {
   list-style: none;
   padding: 2rem;
