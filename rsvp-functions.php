@@ -319,7 +319,7 @@ function add_rsvp_submenu_link( $items, $args ) {
   ) );
 
   // Add the "RSVPs" link if there are any such pages.
-  if (!empty( $rsvp_posts ) ) {
+  if ( !empty( $rsvp_posts ) ) {
     $all_child_pages = [];
 
     // Check the DB for ANY extant AND future RSVPs, including today's date: if none, don't render the RSVP link.
@@ -327,12 +327,17 @@ function add_rsvp_submenu_link( $items, $args ) {
     $table_name = $wpdb->prefix . 'rsvps';
     $extant_rsvps = $wpdb->get_results(
       $wpdb->prepare(
-        "SELECT event_date FROM $table_name WHERE event_date >= %s",
+        "SELECT event_title FROM $table_name WHERE event_date >= %s",
         $today
       )
     );
 
     if ( count( $extant_rsvps ) > 0 && isset( $args->menu ) && ( 'left-main-menu' === $args->menu || 'mobile-menu' === $args->menu ) && is_user_logged_in() ) {
+
+      $event_titles = array_map( function($rsvp) {
+        return $rsvp->event_title;
+      }, $extant_rsvps);
+
       $dom = new DOMDocument();
       @$dom->loadHTML( '<?xml encoding="UTF-8">' . $items );
 
@@ -352,7 +357,7 @@ function add_rsvp_submenu_link( $items, $args ) {
         // Get the Calendar link from the For Members link's submenu.
         $calendar_item = $xpath->query(".//li[a[contains(text(), 'Photo Gallery')]]", $members_submenu)->item(0);
 
-        // Create RSVP menu item.
+        // Create RSVP menu item using the same $dom instance.
         $rsvp_submenu = $dom->createElement('li');
         $rsvp_submenu->setAttribute('id', 'menu-item-rsvp');
         $rsvp_submenu->setAttribute('class', 'menu-item menu-item-has-children');
@@ -368,35 +373,43 @@ function add_rsvp_submenu_link( $items, $args ) {
         $rsvp_submenu_ul = $dom->createElement('ul');
         $rsvp_submenu_ul->setAttribute('class', 'sub-menu rsvp-sub-menu');
         
-        $all_child_pages = get_posts( array( 
+        $all_rsvp_pages = get_posts( array( 
           'post_type'   => 'rsvp',
           'post_status' => 'publish',
+          'orderby'     => 'post_parent',
+          'order'       => 'ASC',
+          'numberposts' => -1,
         ) );
 
         $event_items = [];
 
-        foreach( $all_child_pages as $child_page ) {          
+        foreach( $all_rsvp_pages as $child_page ) {          
           $event_title = $child_page->post_title;
-          $event_url = get_permalink( $child_page->ID );
-          $rsvp_page_id = $child_page->post_name;
 
-          if ( !$child_page->post_parent ) { // Working with an event's main page.
-            $event_li = $dom->createElement('li');
-            $event_li->setAttribute('class', 'menu-item menu-item-type-post_type menu-item-object-page');
-            
-            $event_link = $dom->createElement('a', $event_title);
-            $event_link->setAttribute('class', 'gp-menu-link');
-            $event_link->setAttribute('id', $rsvp_page_id);
-            $event_link->setAttribute('href', $event_url);
-            $event_li->appendChild($event_link);
-            $event_items[$child_page->ID] = [
-              'li' => $event_li,
-            ];
-
-            // Add the ID to the global array.
-            if ( !in_array( $rsvp_page_id, $rsvp_page_ids ) ) {
-              $rsvp_page_ids[] = $rsvp_page_id; // Only add if it's not already in the array
-            }          
+          // Don't publish RSVP pages without RSVPs.
+          if ( in_array( strtolower( $event_title ), array_map( 'strtolower', $event_titles ) ) ) {
+            $event_url = get_permalink( $child_page->ID );
+            $rsvp_page_id = $child_page->post_name;
+  
+            if ( !$child_page->post_parent ) { // Working with an event's main page.
+              // Create $event_li and $event_link using the same $dom instance as $rsvp_submenu.
+              $event_li = $dom->createElement('li');
+              $event_li->setAttribute('class', 'menu-item menu-item-type-post_type menu-item-object-page');
+              
+              $event_link = $dom->createElement('a', $event_title);
+              $event_link->setAttribute('class', 'gp-menu-link');
+              $event_link->setAttribute('id', $rsvp_page_id);
+              $event_link->setAttribute('href', $event_url);
+              $event_li->appendChild($event_link);
+              $event_items[$child_page->ID] = [
+                'li' => $event_li,
+              ];
+  
+              // Add the ID to the global array.
+              if ( !in_array( $rsvp_page_id, $rsvp_page_ids ) ) {
+                $rsvp_page_ids[] = $rsvp_page_id; // Only add if it's not already in the array
+              }          
+            }
           }
         }
 
@@ -407,13 +420,29 @@ function add_rsvp_submenu_link( $items, $args ) {
         // Append RSVP submenu inside the Members submenu.
         $rsvp_submenu->appendChild($rsvp_submenu_ul);
         
-        // Insert RSVP menu item **after** the Members Calendar item.
-        if ( $calendar_item && $calendar_item->parentNode ) {
-          $calendar_item->parentNode->insertBefore($rsvp_submenu, $calendar_item->nextSibling);
+        // Insert RSVP menu item **after** the Members Calendar item, with parentNode check.
+        if ( $calendar_item ) {
+          $refNode = $calendar_item->nextSibling;
+          $newNode = $rsvp_submenu;
+          // Ensure both $newNode and $refNode are from the same DOMDocument ($dom) - they are by construction above.
+          if ($refNode && $refNode->parentNode) {
+            $refNode->parentNode->insertBefore($newNode, $refNode);
+          } else if ($calendar_item->parentNode) {
+            // Fallback: append after $calendar_item if possible.
+            if ($calendar_item->nextSibling) {
+              $calendar_item->parentNode->insertBefore($newNode, $calendar_item->nextSibling);
+            } else {
+              $calendar_item->parentNode->appendChild($newNode);
+            }
+          } else {
+            error_log('RefNode has no parent; cannot insert before it.');
+            // Fallback: Append at the end if Calendar link isn't found.
+            $members_submenu->appendChild($rsvp_submenu);
+          }
         } else {
           // Fallback: Append at the end if Calendar link isn't found.
           $members_submenu->appendChild($rsvp_submenu);
-        }      
+        }
 
         $items = $dom->saveHTML();
       }
@@ -1108,15 +1137,15 @@ function rsvp_dashboard_page() {
 
 // Pass RSVP-enabled state variable to the front-end to be read by JS, specifically the addRSVPLink() function in custom.js.
 function pass_rsvp_enabled_to_frontend() {
-    // Retrieve the stored option (1 = enabled, 0 = disabled).
-    $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option if nothing is returned;
-    ?>
+  // Retrieve the stored option (1 = enabled, 0 = disabled).
+  $rsvp_enabled = get_option( 'rsvp_enabled', '0' ); // '0' is the default option if nothing is returned;
+  ?>
     <script type="text/javascript">
       if (typeof rsvpEnabled === 'undefined') {
         var rsvpEnabled = <?php echo json_encode( $rsvp_enabled === '1' ); ?>;
       }
     </script>
-    <?php
+  <?php
 }
 add_action('wp_head', 'pass_rsvp_enabled_to_frontend');
 
