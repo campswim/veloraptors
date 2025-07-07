@@ -9,193 +9,85 @@ if (typeof getTodaysDate === 'undefined') {
   };
 }
 
-// Add RSVP links to all events in the Simple Calendar: viewport >= 467px.
-if (typeof addRSVPLinkDesktop === 'undefined') {
-  var addRSVPLinkDesktop = () => {
-    if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
-    const monthMap = {
-      January: '01',
-      February: '02',
-      March: '03',
-      April: '04',
-      May: '05',
-      June: '06',
-      July: '07',
-      August: '08',
-      September: '09',
-      October: '10',
-      November: '11',
-      December: '12'
-    };
-    // Get today's date in Pacific Time
-    const now = new Date();
+// Add RSVP links to all events in the Simple Calendar.
+const addRSVPLink = () => {
+  if (!rsvpEnabled) return;  // If RSVP is disabled, exit the function.
+
+  // Helper to add RSVP link if needed to a details node
+  const addLinkIfNeeded = (details) => {
+    if (!details || details.querySelector('.rsvp-link')) return;
+
+    const title = details.querySelector('.simcal-event-title')?.textContent?.trim();
+    const start = details.querySelector('.simcal-event-start-date')?.dataset?.eventStart;
+    const end = details.querySelector('.simcal-event-end-time')?.dataset?.eventEnd;
+    if (!title || !start) return;
+
     const pacificNow = new Date(
-      now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+      new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
     ).toISOString().split('T')[0];
 
-    const observer = new MutationObserver(mutations => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'style') {
-          const target = mutation.target;
-          let eventTitle = '', eventDates = '';
-          
-          if (getComputedStyle(target).display === 'block'){
-            // Prevent duplicate links.
-            if (target.querySelector('.rsvp-link')) return;
-            
-            for (const [index, child] of Object.entries(target?.children)) {
-              if (index === '0') eventTitle = child?.innerText;
-              else if (index === '1') eventDates = child?.innerText;
-            }
+    const formatDate = (timestamp) => {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date(timestamp * 1000));
+    };
 
-            if (eventTitle && eventDates) {
-              const eventStartDate = eventDates.split(' - ')[0] ? eventDates.split(' - ')[0].trim() : '';
-              const eventEndDate = eventDates.split(' - ')[1] ? eventDates.split(' - ')[1].trim() : '';
+    const startDate = formatDate(start);
+    let endDate = end ? formatDate(end) : null;
 
-              let startDay = '', startMonth = '', startYear = '', startDate = '';
-              let endDay = '', endMonth = '', endYear = '', endDate = '';
+    if (startDate < pacificNow) return;
+    if (startDate === endDate) endDate = null;
 
-              if (eventStartDate) {
-                // Get the start day.
-                const match = eventStartDate?.match(/(\w+)\s(\d{1,2}),\s(\d{4})/);                
-                startDay = match ? match[2] : '';
-                startDay = startDay.length === 1 ? '0' + startDay : startDay;
+    const url = endDate
+      ? `/rsvp/?event=${encodeURIComponent(title)}&date=${startDate}|${endDate}`
+      : `/rsvp/?event=${encodeURIComponent(title)}&date=${startDate}`;
 
-                // Get the start month.
-                startMonth = match ? match[1] : '';
-                startMonth = monthMap[startMonth] ? monthMap[startMonth] : '';
-                
-                // Get the start year.
-                startYear = match ? match[3] : '';
+    const rsvpLink = document.createElement('p');
+    rsvpLink.className = 'rsvp-link';
+    rsvpLink.innerHTML = `<br /><a href="${window.location.origin + url}">RSVP</a> for this event.`;
 
-                // Compile the start date.
-                startDate = `${startYear}-${startMonth}-${startDay}`;
-              }
-
-              if (eventEndDate) {
-                endDay = eventEndDate.split(',')[0] ? eventEndDate.split(',')[0].trim() : '';
-                endDay = endDay?.split(' ')[1] ? endDay.split(' ')[1].trim() : '';
-                endDay = endDay.length === 1 ? '0' + endDay : endDay;
-                endMonth = eventEndDate.split(',')[0] ? eventEndDate.split(',')[0].trim() : '';
-                endMonth = endMonth?.split(' ')[0] ? endMonth.split(' ')[0].trim() : '';
-                endMonth = monthMap[endMonth] ? monthMap[endMonth] : '';
-                endYear = eventEndDate.split(',')[1] ? eventEndDate.split(',')[1].trim() : '';
-
-                // Compile the end date.
-                endDate = `${endYear}-${endMonth}-${endDay}`;
-              }
-
-              // Don't add a link if the event's start date is in the past.
-              if (startDate < pacificNow) return;
-
-              const eventPath = !endMonth ? `/rsvp/?event=${eventTitle}&date=${startDate}` : `/rsvp/?event=${eventTitle}&date=${startDate}|${endDate}`;
-
-              const rsvpUrl = window.location.origin + eventPath;
-              const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
-              const newChildNode = document.createElement('p');
-              newChildNode.className = 'rsvp-link';
-              newChildNode.innerHTML = htmlContent;
-
-              target.appendChild(newChildNode);
-            }
-          }
-        }
-      });
-    });
-
-    document.querySelectorAll(".simcal-event-details").forEach((element) => {
-      observer.observe(element, { attributes: true, attributeFilter: ["style"] });
-    });
+    details.appendChild(rsvpLink);
   };
-}
-
-// Add RSVP links to all events in the Simple Calendar: viewport < 467px.
-const addRSVPLinkMobile = () => {
-  // Get today's date in Pacific Time
-  const now = new Date();
-  const pacificNow = new Date(
-    now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
-  ).toISOString().split('T')[0];
 
   // Add an event listener to each of the calendar's events.
   document.querySelectorAll('.simcal-day-has-events').forEach(event => {
     event.addEventListener('click', function() {
+
       // Set up the MutationObserver to watch for the addition of the event bubble to the DOM.
       const observer = new MutationObserver(mutationsList => {
         mutationsList.forEach(mutation => {
           // Check if .simcal-event-bubble is added to the DOM.
-          mutation.addedNodes.forEach(node => {  
+          mutation.addedNodes.forEach(node => {
             if (node.nodeType === 1 && node.matches('.simcal-event-bubble')) {
-              const clickedDay = node.querySelector('.simcal-events');
-              
-              if (clickedDay && clickedDay?.children) {
-                for (const child of clickedDay.children) {
-                  const eventTitle = child?.firstElementChild?.innerText.split(' ').join('-').toLowerCase();
-                  const eventDescription = child?.lastElementChild;
+              // Observe for changes within the bubble to add RSVP link as needed.
+              const bubbleObserver = new MutationObserver(() => {
+                // For mobile: handle multiple events in a single tooltip
+                const detailNodes = node.querySelectorAll('.simcal-event-details');
+                detailNodes.forEach(addLinkIfNeeded);
 
-                  if (eventTitle && eventDescription && eventDescription?.children) {
-                    // Prevent duplicate links.
-                    if (eventDescription.querySelector('.rsvp-link')) return;
-
-                    // Get the event's start and end dates.
-                    for (const eventDetail of eventDescription.children) {
-                      if (eventDetail?.firstElementChild && eventDetail.firstElementChild?.className && eventDetail.firstElementChild.className.includes('simcal-event-start')) {
-                        const eventDates = eventDetail?.children;
-                        let startDate = '', endDate = '';
-
-                        // Set the start and end dates of the event.
-                        if (eventDates) {
-                          for (const date of eventDates) {
-                            if (date?.className.includes('simcal-event-start-date')) startDate = date?.dataset?.eventStart;
-                            else if (date?.className.includes('simcal-event-end-date')) endDate = date?.dataset?.eventStart;
-                          }
-
-                          const formatToPacificTime = (timestamp) => {
-                            if (!timestamp) return '';
-                            
-                            const options = { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' };
-                            const date = new Intl.DateTimeFormat('en-CA', options).format(new Date(timestamp * 1000));
-                            return date.replace(/(\d{2})-(\d{2})-(\d{4})/, '$3-$1-$2'); // Converts MM-DD-YYYY to YYYY-MM-DD
-                          };
-
-                          const startDateFormatted = formatToPacificTime(startDate);
-                          const endDateFormatted = formatToPacificTime(endDate);
-
-                          if (startDateFormatted < pacificNow) return;
-                          
-                          const eventPath = !endDateFormatted 
-                            ? `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}`
-                            : `/rsvp/?event=${encodeURIComponent(eventTitle)}&date=${encodeURIComponent(startDateFormatted)}|${encodeURIComponent(endDateFormatted)}`;                          
-                          const rsvpUrl = window.location.origin + eventPath;
-                          const htmlContent = `<br /><a href="${rsvpUrl}">RSVP</a> for this event.`;
-                          const newChildNode = document.createElement('p');
-                          
-                          newChildNode.className = 'rsvp-link';
-                          newChildNode.innerHTML = htmlContent;
-                          eventDescription.appendChild(newChildNode);
-                        }
-
-                        break;
-                      }
-                    }
-                  }
+                // For desktop: handle the single qtip-content block
+                const desktopDetails = node.querySelector('.qtip-content');
+                if (desktopDetails && !detailNodes.length) {
+                  addLinkIfNeeded(desktopDetails);
                 }
-              }
-                
-              // Disconnect the observer once it's done.
+              });
+              bubbleObserver.observe(node, { childList: true, subtree: true });
               observer.disconnect();
             }
           });
         });
       });
-  
+
       // Start observing the entire document for added nodes.
       observer.observe(document.body, {
         childList: true,
-        subtree: true,  // Watch the entire document subtree for changes.
+        subtree: true,
       });
     });
-  });       
+  });
 };
 
 // Correct the disabled attribute of the Simple Calendar based on the current months and start and end months. (The plugin doesn't do this accurately.)
@@ -255,8 +147,7 @@ if (typeof observeCurrentCalendarChanges === 'undefined') {
     const observer = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
         if (mutation.attributeName === 'data-calendar-current') {
-          addRSVPLinkDesktop();
-          addRSVPLinkMobile();
+          addRSVPLink();
           correctCalNavButtons();
         }
       });
@@ -531,8 +422,7 @@ const formatRsvpPageSubtitle = () => {
 
 // Call the functions when the DOM is fully loaded.
 document.addEventListener('DOMContentLoaded', () => {
-  addRSVPLinkDesktop();
-  addRSVPLinkMobile();
+  addRSVPLink();
   observeCurrentCalendarChanges();
   tabRedirectAndScrollSupppression();
   hidePopularTag();
