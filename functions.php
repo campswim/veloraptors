@@ -683,7 +683,7 @@ add_action( 'bp_profile_header_meta', function() {
   if ( bp_displayed_user_id() ) {
     $user = get_userdata( bp_displayed_user_id() );
     if ( $user && current_user_can( 'read' ) ) { // Only show to logged-in users
-      echo '<div style="color:white;" class="bp-user-email">' . esc_html( $user->user_email ) . '</div>';
+      echo '<div class="bp-user-email"><a class="member-email" href="mailto:' . esc_attr( $user->user_email ) . '">' . esc_html( $user->user_email ) . '</a></div>';
     }
   }
 });

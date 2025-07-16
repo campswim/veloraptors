@@ -281,6 +281,14 @@ textarea.wpforms-field-required::placeholder {
   color: #FFFFFF;
 }
 
+/* Control the color of members' emails in the header of their BP profile. */
+.bp-user-email a.member-email {
+  color: #FFFFFF;
+}
+.bp-user-email a.member-email:hover {
+  color: #D36555;
+}
+
 @media all and (min-width: 500px) {
   table.rsvp-attendees-list-table td {
     font-size: 1rem;
