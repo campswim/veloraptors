@@ -678,6 +678,18 @@ add_action('wp_loaded', function() {
   }
 });
 
+add_action( 'bp_profile_header_meta', function() {  
+  if ( bp_displayed_user_id() ) {
+
+    echo 'ian wuz ere<br>';
+
+    $user = get_userdata( bp_displayed_user_id() );
+    if ( $user && current_user_can( 'read' ) ) { // Only show to logged-in users
+      echo '<div style="color:white;" class="bp-user-email">' . esc_html( $user->user_email ) . '</div>';
+    }
+  }
+});
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
