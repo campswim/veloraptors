@@ -688,6 +688,12 @@ add_action( 'bp_profile_header_meta', function() {
   }
 });
 
+function allow_svg_uploads($mimes) {
+  $mimes['svg'] = 'image/svg+xml';
+  return $mimes;
+}
+add_filter('upload_mimes', 'allow_svg_uploads');
+
 // // Test email functionality.
 // function test_wp_mail_function() {
 //   error_log('ian wuz ere.');
